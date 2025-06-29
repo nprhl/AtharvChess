@@ -15,8 +15,8 @@ interface ChessBoardProps {
 }
 
 const PIECE_SYMBOLS = {
-  'wp': '♙', 'wr': '♖', 'wn': '♘', 'wb': '♗', 'wq': '♕', 'wk': '♔',
-  'bp': '♟', 'br': '♜', 'bn': '♞', 'bb': '♝', 'bq': '♛', 'bk': '♚'
+  'wp': '♟︎', 'wr': '♜', 'wn': '♞', 'wb': '♝', 'wq': '♛', 'wk': '♚',
+  'bp': '♟︎', 'br': '♜', 'bn': '♞', 'bb': '♝', 'bq': '♛', 'bk': '♚'
 };
 
 export default function ChessBoard({ game, onMove, getValidMoves, disabled = false }: ChessBoardProps) {
