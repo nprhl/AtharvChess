@@ -65,11 +65,12 @@
 
 @layer components {
   .chess-piece {
-    font-size: 2.2rem;
+    font-size: clamp(1.5rem, 4vw, 2rem);
     cursor: grab;
     user-select: none;
     transition: all 0.2s ease;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    line-height: 1;
   }
   
   .chess-piece:active {
@@ -83,7 +84,8 @@
   
   .chess-square {
     transition: all 0.2s ease;
-    border: 1px solid rgba(0,0,0,0.1);
+    aspect-ratio: 1;
+    min-height: 0;
   }
   
   .chess-square:hover {

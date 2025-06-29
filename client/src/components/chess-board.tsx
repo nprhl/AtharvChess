@@ -81,8 +81,8 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
     const isDragging = draggedPiece?.square === square;
 
     const squareClasses = [
-      "chess-square flex items-center justify-center aspect-square relative border-0",
-      isLight ? "bg-amber-100" : "bg-amber-700",
+      "chess-square flex items-center justify-center relative w-full h-full",
+      isLight ? "bg-amber-100" : "bg-amber-700", 
       isValidMove && "valid-move",
       isDragOver && validMoves.includes(square) && "drop-zone"
     ].filter(Boolean).join(" ");
@@ -144,8 +144,8 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
   return (
     <div 
       ref={boardRef}
-      className="grid grid-cols-8 gap-0 aspect-square border-4 border-slate-600 rounded-lg overflow-hidden shadow-lg max-w-sm mx-auto"
-      style={{ width: '100%', maxWidth: '320px' }}
+      className="grid grid-cols-8 gap-0 w-full aspect-square border-2 border-slate-400 rounded-md overflow-hidden shadow-xl mx-auto"
+      style={{ maxWidth: 'min(85vw, 400px)', height: 'auto' }}
     >
       {ranks.map((rank, rankIndex) =>
         files.map((file, fileIndex) => renderSquare(fileIndex, rankIndex))

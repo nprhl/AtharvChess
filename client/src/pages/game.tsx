@@ -41,9 +41,9 @@ export default function GamePage() {
   };
 
   return (
-    <section className="p-4 space-y-4">
+    <section className="p-3 space-y-3 flex flex-col h-full">
       {/* Game Status Bar */}
-      <div className="bg-slate-700 rounded-lg p-3 flex items-center justify-between">
+      <div className="bg-slate-700 rounded-lg p-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse" />
           <span className="text-sm font-medium">
@@ -56,7 +56,7 @@ export default function GamePage() {
       </div>
 
       {/* Interactive Chessboard */}
-      <div className="rounded-lg p-2">
+      <div className="flex-1 flex items-center justify-center px-2">
         <ChessBoard 
           game={game}
           onMove={makeMove}
@@ -65,43 +65,46 @@ export default function GamePage() {
         />
       </div>
 
-      {/* AI Hint Card */}
-      {showHint && currentHint && (
-        <AIHintCard 
-          hint={currentHint}
-          onClose={() => setShowHint(false)}
-        />
-      )}
+      {/* Bottom Section - Fixed */}
+      <div className="flex-shrink-0 space-y-3">
+        {/* AI Hint Card */}
+        {showHint && currentHint && (
+          <AIHintCard 
+            hint={currentHint}
+            onClose={() => setShowHint(false)}
+          />
+        )}
 
-      {/* Game Controls */}
-      <div className="flex space-x-2">
-        <Button 
-          variant="secondary" 
-          className="flex-1 bg-slate-700 hover:bg-slate-600"
-          onClick={undoMove}
-          disabled={moveHistory.length === 0}
-        >
-          <Undo className="w-4 h-4 mr-2" />
-          Undo
-        </Button>
-        <Button 
-          className="flex-1 bg-blue-600 hover:bg-blue-700"
-          onClick={handleGetHint}
-        >
-          <HelpCircle className="w-4 h-4 mr-2" />
-          Hint
-        </Button>
-      </div>
-
-      {/* Game Over Message */}
-      {isGameOver() && (
-        <div className="bg-yellow-600 rounded-lg p-4">
-          <h3 className="font-semibold text-center">
-            {game.isCheckmate() ? 'Checkmate!' : 
-             game.isDraw() ? 'Draw!' : 'Game Over'}
-          </h3>
+        {/* Game Controls */}
+        <div className="flex space-x-2">
+          <Button 
+            variant="secondary" 
+            className="flex-1 bg-slate-700 hover:bg-slate-600"
+            onClick={undoMove}
+            disabled={moveHistory.length === 0}
+          >
+            <Undo className="w-4 h-4 mr-2" />
+            Undo
+          </Button>
+          <Button 
+            className="flex-1 bg-blue-600 hover:bg-blue-700"
+            onClick={handleGetHint}
+          >
+            <HelpCircle className="w-4 h-4 mr-2" />
+            Hint
+          </Button>
         </div>
-      )}
+
+        {/* Game Over Message */}
+        {isGameOver() && (
+          <div className="bg-yellow-600 rounded-lg p-4">
+            <h3 className="font-semibold text-center">
+              {game.isCheckmate() ? 'Checkmate!' : 
+               game.isDraw() ? 'Draw!' : 'Game Over'}
+            </h3>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
