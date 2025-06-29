@@ -88,7 +88,7 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
     ].filter(Boolean).join(" ");
 
     const pieceSymbol = piece ? PIECE_SYMBOLS[`${piece.color}${piece.type}` as keyof typeof PIECE_SYMBOLS] : null;
-    const pieceColor = piece?.color === 'w' ? 'text-slate-100' : 'text-slate-800';
+    const pieceColor = piece?.color === 'w' ? 'text-white' : 'text-slate-900';
 
     return (
       <div
@@ -114,6 +114,9 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
         {piece && (
           <span
             className={`chess-piece ${pieceColor} ${isDragging ? 'dragging' : ''}`}
+            style={{
+              WebkitTextStroke: piece.color === 'w' ? '1px #000' : '1px #fff'
+            }}
             draggable={!disabled && piece.color === game.turn()}
             onDragStart={(e) => {
               const canDrag = handleDragStart(piece, square);
