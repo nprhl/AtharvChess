@@ -81,14 +81,14 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
     const isDragging = draggedPiece?.square === square;
 
     const squareClasses = [
-      "chess-square flex items-center justify-center aspect-square relative",
-      isLight ? "bg-board-light" : "bg-board-dark",
+      "chess-square flex items-center justify-center aspect-square relative border-0",
+      isLight ? "bg-amber-100" : "bg-amber-700",
       isValidMove && "valid-move",
       isDragOver && validMoves.includes(square) && "drop-zone"
     ].filter(Boolean).join(" ");
 
     const pieceSymbol = piece ? PIECE_SYMBOLS[`${piece.color}${piece.type}` as keyof typeof PIECE_SYMBOLS] : null;
-    const pieceColor = piece?.color === 'w' ? 'text-white' : 'text-slate-800';
+    const pieceColor = piece?.color === 'w' ? 'text-slate-100' : 'text-slate-800';
 
     return (
       <div
@@ -104,6 +104,12 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
           e.preventDefault();
           handleDrop(square);
         }}
+        onClick={(e) => {
+          // Handle click on empty square for move completion
+          if (!piece && draggedPiece && validMoves.includes(square)) {
+            handleDrop(square);
+          }
+        }}
       >
         {piece && (
           <span
@@ -113,9 +119,20 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
               const canDrag = handleDragStart(piece, square);
               if (!canDrag) {
                 e.preventDefault();
+                return;
               }
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', square);
             }}
             onDragEnd={handleDragEnd}
+            onClick={(e) => {
+              // Handle click-to-move for mobile or as fallback
+              if (!draggedPiece && piece.color === game.turn()) {
+                handleDragStart(piece, square);
+              } else if (draggedPiece && validMoves.includes(square)) {
+                handleDrop(square);
+              }
+            }}
           >
             {pieceSymbol}
           </span>
@@ -127,7 +144,8 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
   return (
     <div 
       ref={boardRef}
-      className="grid grid-cols-8 gap-0 aspect-square border-2 border-slate-500 rounded-lg overflow-hidden"
+      className="grid grid-cols-8 gap-0 aspect-square border-4 border-slate-600 rounded-lg overflow-hidden shadow-lg max-w-sm mx-auto"
+      style={{ width: '100%', maxWidth: '320px' }}
     >
       {ranks.map((rank, rankIndex) =>
         files.map((file, fileIndex) => renderSquare(fileIndex, rankIndex))

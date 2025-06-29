@@ -56,7 +56,7 @@ export default function GamePage() {
       </div>
 
       {/* Interactive Chessboard */}
-      <div className="bg-slate-600 rounded-lg p-4 shadow-lg">
+      <div className="rounded-lg p-2">
         <ChessBoard 
           game={game}
           onMove={makeMove}
