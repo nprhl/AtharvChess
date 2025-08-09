@@ -172,7 +172,11 @@ export default function LessonDetailPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-slate-300 leading-relaxed">{currentSection.content.content || currentSection.content}</p>
+          {typeof currentSection.content === 'string' ? (
+            <p className="text-slate-300 leading-relaxed">{currentSection.content}</p>
+          ) : currentSection.content.content ? (
+            <p className="text-slate-300 leading-relaxed">{currentSection.content.content}</p>
+          ) : null}
 
           {/* Interactive Chess Section */}
           {isInteractive && currentSection.content.fen && (
