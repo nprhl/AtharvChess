@@ -106,7 +106,7 @@ export class MemStorage implements IStorage {
               title: "Rook vs Pieces",
               type: "interactive",
               content: {
-                fen: "8/8/8/8/3r4/8/8/3R4 w - - 0 1",
+                fen: "4k3/8/8/8/3r4/8/8/3RK3 w - - 0 1",
                 instruction: "Move your rook to attack the black rook",
                 correctMoves: ["d1d4"],
                 hints: ["Rooks attack along ranks and files", "Your rook can move vertically to attack"]
@@ -158,7 +158,7 @@ export class MemStorage implements IStorage {
               title: "Bishop Positioning",
               type: "interactive", 
               content: {
-                fen: "8/8/8/8/8/8/8/3B1B2 w - - 0 1",
+                fen: "4k3/8/8/8/8/8/8/3BKB2 w - - 0 1",
                 instruction: "Move the bishop to control the long diagonal",
                 correctMoves: ["d1h5", "f1h3"],
                 hints: ["Long diagonals give bishops maximum scope", "Look for diagonals that cut across the board"]
@@ -195,7 +195,7 @@ export class MemStorage implements IStorage {
               title: "Knight Jumps",
               type: "interactive",
               content: {
-                fen: "8/8/8/8/3N4/8/8/8 w - - 0 1", 
+                fen: "4k3/8/8/8/3N4/8/8/4K3 w - - 0 1", 
                 instruction: "Move the knight to show its L-shaped movement",
                 correctMoves: ["d4c6", "d4e6", "d4f5", "d4f3", "d4e2", "d4c2", "d4b3", "d4b5"],
                 hints: ["Knights move in an L: 2+1 or 1+2 squares", "Knights can jump over pieces"]
@@ -242,7 +242,7 @@ export class MemStorage implements IStorage {
               title: "Queen Activity",
               type: "interactive",
               content: {
-                fen: "8/8/8/8/3Q4/8/8/8 w - - 0 1",
+                fen: "4k3/8/8/8/3Q4/8/8/4K3 w - - 0 1",
                 instruction: "Show the queen's versatile movement by moving to different squares",
                 correctMoves: ["d4a1", "d4h8", "d4d8", "d4a4", "d4f6"],
                 hints: ["Queens combine rook and bishop movements", "Queens can move in 8 directions"]
@@ -257,7 +257,7 @@ export class MemStorage implements IStorage {
               title: "Queen vs Multiple Pieces",
               type: "interactive",
               content: {
-                fen: "8/8/8/2r1r3/3Q4/8/8/8 w - - 0 1",
+                fen: "4k3/8/8/2r1r3/3Q4/8/8/4K3 w - - 0 1",
                 instruction: "Move the queen to a safe square where she's not attacked",
                 correctMoves: ["d4a1", "d4h8", "d4b2", "d4f6"],
                 hints: ["The queen is attacked by both rooks", "Find a square not on the same rank or file as the rooks"]
