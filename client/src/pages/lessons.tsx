@@ -5,8 +5,11 @@ import { CheckCircle, BookOpen, Trophy, Clock, Target, Play, Star } from "lucide
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { useLocation } from "wouter";
 
 export default function LessonsPage() {
+  const [, setLocation] = useLocation();
+  
   const { data: lessons = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/lessons']
   });
@@ -14,6 +17,10 @@ export default function LessonsPage() {
   const currentLesson = lessons[0]; // First uncompleted lesson
   const completedLessons = []; // No completed lessons yet
   const upcomingLessons = lessons.slice(1, 4);
+  
+  const startLesson = (lessonId: number) => {
+    setLocation(`/lesson/${lessonId}`);
+  };
 
   if (isLoading) {
     return (
@@ -133,7 +140,10 @@ export default function LessonsPage() {
               </div>
             )}
 
-            <Button className="w-full bg-white text-blue-600 hover:bg-blue-50 font-semibold">
+            <Button 
+              onClick={() => startLesson(currentLesson.id)}
+              className="w-full bg-white text-blue-600 hover:bg-blue-50 font-semibold"
+            >
               <Play className="w-4 h-4 mr-2" />
               Start Learning
             </Button>
@@ -173,7 +183,12 @@ export default function LessonsPage() {
                       </div>
                     )}
                   </div>
-                  <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white flex-shrink-0">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => startLesson(lesson.id)}
+                    className="text-slate-400 hover:text-white flex-shrink-0"
+                  >
                     <BookOpen className="w-4 h-4" />
                   </Button>
                 </div>

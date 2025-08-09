@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import GamePage from "@/pages/game";
 import LessonsPage from "@/pages/lessons";
+import LessonDetailPage from "@/pages/lesson-detail";
 import ProgressPage from "@/pages/progress";
 import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -16,6 +17,7 @@ function Router() {
     <Switch>
       <Route path="/" component={GamePage} />
       <Route path="/lessons" component={LessonsPage} />
+      <Route path="/lesson/:id" component={LessonDetailPage} />
       <Route path="/progress" component={ProgressPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
