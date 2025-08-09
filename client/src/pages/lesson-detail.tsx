@@ -21,7 +21,7 @@ export default function LessonDetailPage() {
   const [attemptCount, setAttemptCount] = useState(0);
 
   const { data: lesson, isLoading } = useQuery<any>({
-    queryKey: ['/api/lesson', lessonId]
+    queryKey: [`/api/lesson/${lessonId}`]
   });
 
   useEffect(() => {
