@@ -4,6 +4,8 @@ import {
   type Lesson, type InsertLesson, type UserLessonProgress, 
   type InsertUserLessonProgress, type Settings, type InsertSettings
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -30,24 +32,18 @@ export interface IStorage {
   updateUserSettings(userId: number, settings: Partial<InsertSettings>): Promise<Settings>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User> = new Map();
-  private games: Map<number, Game> = new Map();
-  private lessons: Map<number, Lesson> = new Map();
-  private userLessonProgress: Map<string, UserLessonProgress> = new Map();
-  private settings: Map<number, Settings> = new Map();
-  private currentUserId = 1;
-  private currentGameId = 1;
-  private currentLessonId = 1;
-  private currentProgressId = 1;
-  private currentSettingsId = 1;
-
+export class DatabaseStorage implements IStorage {
   constructor() {
     // Initialize with default lessons
     this.initializeDefaultLessons();
   }
 
-  private initializeDefaultLessons() {
+  private async initializeDefaultLessons() {
+    const existingLessons = await this.getAllLessons();
+    if (existingLessons.length > 0) {
+      return; // Lessons already exist
+    }
+
     const defaultLessons: InsertLesson[] = [
       {
         title: "Basic Pawn Moves",
@@ -318,32 +314,30 @@ export class MemStorage implements IStorage {
       }
     ];
 
-    defaultLessons.forEach(lesson => {
-      this.createLesson(lesson);
-    });
+    for (const lesson of defaultLessons) {
+      await this.createLesson(lesson);
+    }
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.username === username);
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { 
-      ...insertUser, 
-      id,
-      createdAt: new Date()
-    };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
 
     // Create default settings for new user
-    const defaultSettings: Settings = {
-      id: this.currentSettingsId++,
-      userId: id,
+    await db.insert(settings).values({
+      userId: user.id,
       hintsEnabled: true,
       focusMode: false,
       progressTracking: true,
@@ -351,54 +345,51 @@ export class MemStorage implements IStorage {
       breakReminders: 15,
       difficulty: 'beginner',
       autoAdjustDifficulty: true
-    };
-    this.settings.set(id, defaultSettings);
+    });
 
     return user;
   }
 
   async updateUser(id: number, updates: Partial<User>): Promise<User | undefined> {
-    const user = this.users.get(id);
-    if (!user) return undefined;
-    
-    const updatedUser = { ...user, ...updates };
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    const [user] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return user || undefined;
   }
 
   async getGamesByUserId(userId: number): Promise<Game[]> {
-    return Array.from(this.games.values()).filter(game => game.userId === userId);
+    return await db.select().from(games).where(eq(games.userId, userId));
   }
 
   async createGame(insertGame: InsertGame): Promise<Game> {
-    const id = this.currentGameId++;
-    const game: Game = { 
-      ...insertGame, 
-      id,
-      createdAt: new Date()
-    };
-    this.games.set(id, game);
+    const [game] = await db
+      .insert(games)
+      .values(insertGame)
+      .returning();
     return game;
   }
 
   async getAllLessons(): Promise<Lesson[]> {
-    return Array.from(this.lessons.values()).sort((a, b) => a.order - b.order);
+    return await db.select().from(lessons).orderBy(lessons.order);
   }
 
   async getLessonById(id: number): Promise<Lesson | undefined> {
-    return this.lessons.get(id);
+    const [lesson] = await db.select().from(lessons).where(eq(lessons.id, id));
+    return lesson || undefined;
   }
 
   async createLesson(insertLesson: InsertLesson): Promise<Lesson> {
-    const id = this.currentLessonId++;
-    const lesson: Lesson = { ...insertLesson, id };
-    this.lessons.set(id, lesson);
+    const [lesson] = await db
+      .insert(lessons)
+      .values(insertLesson)
+      .returning();
     return lesson;
   }
 
   async getUserLessonProgress(userId: number): Promise<UserLessonProgress[]> {
-    return Array.from(this.userLessonProgress.values())
-      .filter(progress => progress.userId === userId);
+    return await db.select().from(userLessonProgress).where(eq(userLessonProgress.userId, userId));
   }
 
   async updateUserLessonProgress(
@@ -406,13 +397,31 @@ export class MemStorage implements IStorage {
     lessonId: number, 
     progressUpdate: Partial<InsertUserLessonProgress>
   ): Promise<UserLessonProgress> {
-    const key = `${userId}-${lessonId}`;
-    const existing = this.userLessonProgress.get(key);
+    const [existing] = await db
+      .select()
+      .from(userLessonProgress)
+      .where(and(
+        eq(userLessonProgress.userId, userId),
+        eq(userLessonProgress.lessonId, lessonId)
+      ));
     
-    const progress: UserLessonProgress = existing ? 
-      { ...existing, ...progressUpdate } :
-      {
-        id: this.currentProgressId++,
+    if (existing) {
+      const updateData: any = { ...progressUpdate };
+      if (progressUpdate.completed && !existing.completedAt) {
+        updateData.completedAt = new Date();
+      }
+      
+      const [progress] = await db
+        .update(userLessonProgress)
+        .set(updateData)
+        .where(and(
+          eq(userLessonProgress.userId, userId),
+          eq(userLessonProgress.lessonId, lessonId)
+        ))
+        .returning();
+      return progress;
+    } else {
+      const insertData: any = {
         userId,
         lessonId,
         completed: false,
@@ -420,40 +429,52 @@ export class MemStorage implements IStorage {
         completedAt: null,
         ...progressUpdate
       };
-
-    if (progressUpdate.completed && !progress.completedAt) {
-      progress.completedAt = new Date();
+      
+      if (progressUpdate.completed && !insertData.completedAt) {
+        insertData.completedAt = new Date();
+      }
+      
+      const [progress] = await db
+        .insert(userLessonProgress)
+        .values(insertData)
+        .returning();
+      return progress;
     }
-
-    this.userLessonProgress.set(key, progress);
-    return progress;
   }
 
   async getUserSettings(userId: number): Promise<Settings | undefined> {
-    return this.settings.get(userId);
+    const [userSettings] = await db.select().from(settings).where(eq(settings.userId, userId));
+    return userSettings || undefined;
   }
 
   async updateUserSettings(userId: number, settingsUpdate: Partial<InsertSettings>): Promise<Settings> {
-    const existing = this.settings.get(userId);
+    const [existing] = await db.select().from(settings).where(eq(settings.userId, userId));
     
-    const settings: Settings = existing ?
-      { ...existing, ...settingsUpdate } :
-      {
-        id: this.currentSettingsId++,
-        userId,
-        hintsEnabled: true,
-        focusMode: false,
-        progressTracking: true,
-        dailyPlayTime: 30,
-        breakReminders: 15,
-        difficulty: 'beginner',
-        autoAdjustDifficulty: true,
-        ...settingsUpdate
-      };
-
-    this.settings.set(userId, settings);
-    return settings;
+    if (existing) {
+      const [updatedSettings] = await db
+        .update(settings)
+        .set(settingsUpdate)
+        .where(eq(settings.userId, userId))
+        .returning();
+      return updatedSettings;
+    } else {
+      const [newSettings] = await db
+        .insert(settings)
+        .values({
+          userId,
+          hintsEnabled: true,
+          focusMode: false,
+          progressTracking: true,
+          dailyPlayTime: 30,
+          breakReminders: 15,
+          difficulty: 'beginner',
+          autoAdjustDifficulty: true,
+          ...settingsUpdate
+        })
+        .returning();
+      return newSettings;
+    }
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

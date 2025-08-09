@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -75,6 +76,45 @@ export const insertUserLessonProgressSchema = createInsertSchema(userLessonProgr
 export const insertSettingsSchema = createInsertSchema(settings).omit({
   id: true,
 });
+
+// Relations
+export const usersRelations = relations(users, ({ many, one }) => ({
+  games: many(games),
+  lessonProgress: many(userLessonProgress),
+  settings: one(settings, {
+    fields: [users.id],
+    references: [settings.userId],
+  }),
+}));
+
+export const gamesRelations = relations(games, ({ one }) => ({
+  user: one(users, {
+    fields: [games.userId],
+    references: [users.id],
+  }),
+}));
+
+export const lessonsRelations = relations(lessons, ({ many }) => ({
+  userProgress: many(userLessonProgress),
+}));
+
+export const userLessonProgressRelations = relations(userLessonProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [userLessonProgress.userId],
+    references: [users.id],
+  }),
+  lesson: one(lessons, {
+    fields: [userLessonProgress.lessonId],
+    references: [lessons.id],
+  }),
+}));
+
+export const settingsRelations = relations(settings, ({ one }) => ({
+  user: one(users, {
+    fields: [settings.userId],
+    references: [users.id],
+  }),
+}));
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;

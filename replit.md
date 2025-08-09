@@ -93,9 +93,20 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 - Development/production mode detection via `NODE_ENV`
 - Replit-specific features enabled via `REPL_ID` detection
 
+## Recent Changes
+
+- **August 9, 2025**: Added PostgreSQL database integration with Neon
+  - Replaced in-memory storage (MemStorage) with database storage (DatabaseStorage)
+  - Created database schema with tables: users, games, lessons, user_lesson_progress, settings
+  - Added Drizzle relations for type-safe queries and joins
+  - Implemented full CRUD operations for all entities
+  - Successfully migrated default lessons to database
+  - All LSP diagnostics resolved
+
 ## Changelog
 
-- June 29, 2025. Initial setup
+- August 9, 2025: PostgreSQL database integration completed
+- June 29, 2025: Initial setup
 
 ## User Preferences
 
