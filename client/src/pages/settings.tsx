@@ -57,16 +57,16 @@ export default function SettingsPage() {
   return (
     <section className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Parental Controls</h2>
+        <h2 className="text-xl font-bold text-foreground">Parental Controls</h2>
         <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
           <Shield className="w-4 h-4 text-white" />
         </div>
       </div>
 
       {/* Learning Settings */}
-      <Card className="bg-slate-700 border-slate-600">
+      <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="font-semibold mb-3 flex items-center">
+          <h3 className="font-semibold mb-3 flex items-center text-card-foreground">
             <GraduationCap className="w-5 h-5 mr-2 text-blue-400" />
             Learning Settings
           </h3>
@@ -74,8 +74,8 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-sm">Enable Hints</p>
-                <p className="text-xs text-slate-400">Allow AI suggestions during games</p>
+                <p className="font-medium text-sm text-card-foreground">Enable Hints</p>
+                <p className="text-xs text-muted-foreground">Allow AI suggestions during games</p>
               </div>
               <Switch
                 checked={settings.hintsEnabled}
@@ -85,8 +85,8 @@ export default function SettingsPage() {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-sm">Focus Mode</p>
-                <p className="text-xs text-slate-400">Hide distracting elements</p>
+                <p className="font-medium text-sm text-card-foreground">Focus Mode</p>
+                <p className="text-xs text-muted-foreground">Hide distracting elements</p>
               </div>
               <Switch
                 checked={settings.focusMode}
@@ -96,8 +96,8 @@ export default function SettingsPage() {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-sm">Progress Tracking</p>
-                <p className="text-xs text-slate-400">Save game history and statistics</p>
+                <p className="font-medium text-sm text-card-foreground">Progress Tracking</p>
+                <p className="text-xs text-muted-foreground">Save game history and statistics</p>
               </div>
               <Switch
                 checked={settings.progressTracking}
@@ -109,21 +109,21 @@ export default function SettingsPage() {
       </Card>
 
       {/* Time Management */}
-      <Card className="bg-slate-700 border-slate-600">
+      <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="font-semibold mb-3 flex items-center">
+          <h3 className="font-semibold mb-3 flex items-center text-card-foreground">
             <Clock className="w-5 h-5 mr-2 text-purple-400" />
             Time Management
           </h3>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Daily Play Time</label>
+              <label className="block text-sm font-medium mb-2 text-card-foreground">Daily Play Time</label>
               <Select
                 value={settings.dailyPlayTime.toString()}
                 onValueChange={(value) => updateSetting('dailyPlayTime', parseInt(value))}
               >
-                <SelectTrigger className="bg-slate-600 border-slate-500">
+                <SelectTrigger className="bg-background border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -136,12 +136,12 @@ export default function SettingsPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-2">Break Reminders</label>
+              <label className="block text-sm font-medium mb-2 text-card-foreground">Break Reminders</label>
               <Select
                 value={settings.breakReminders.toString()}
                 onValueChange={(value) => updateSetting('breakReminders', parseInt(value))}
               >
-                <SelectTrigger className="bg-slate-600 border-slate-500">
+                <SelectTrigger className="bg-background border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -157,16 +157,16 @@ export default function SettingsPage() {
       </Card>
 
       {/* Difficulty Control */}
-      <Card className="bg-slate-700 border-slate-600">
+      <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <h3 className="font-semibold mb-3 flex items-center">
+          <h3 className="font-semibold mb-3 flex items-center text-card-foreground">
             <TrendingUp className="w-5 h-5 mr-2 text-emerald-400" />
             Difficulty Control
           </h3>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Starting Difficulty</label>
+              <label className="block text-sm font-medium mb-2 text-card-foreground">Starting Difficulty</label>
               <div className="grid grid-cols-3 gap-2">
                 {['beginner', 'intermediate', 'advanced'].map((level) => (
                   <Button
@@ -174,8 +174,8 @@ export default function SettingsPage() {
                     variant={settings.difficulty === level ? "default" : "secondary"}
                     className={`text-xs font-medium ${
                       settings.difficulty === level 
-                        ? 'bg-emerald-500 hover:bg-emerald-600' 
-                        : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white' 
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                     }`}
                     onClick={() => updateSetting('difficulty', level)}
                   >
@@ -187,8 +187,8 @@ export default function SettingsPage() {
             
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-sm">Auto-Adjust Difficulty</p>
-                <p className="text-xs text-slate-400">Adapt based on performance</p>
+                <p className="font-medium text-sm text-card-foreground">Auto-Adjust Difficulty</p>
+                <p className="text-xs text-muted-foreground">Adapt based on performance</p>
               </div>
               <Switch
                 checked={settings.autoAdjustDifficulty}

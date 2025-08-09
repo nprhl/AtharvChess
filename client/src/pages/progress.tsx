@@ -63,7 +63,7 @@ export default function ProgressPage() {
 
   return (
     <section className="p-4 space-y-4">
-      <h2 className="text-xl font-bold">Your Progress</h2>
+      <h2 className="text-xl font-bold text-foreground">Your Progress</h2>
 
       {/* Elo Rating Card */}
       <Card className="bg-gradient-to-r from-blue-600 to-purple-600 border-none">
@@ -106,50 +106,50 @@ export default function ProgressPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3">
-        <Card className="bg-slate-700 border-slate-600">
+        <Card className="bg-card border-border">
           <CardContent className="p-3">
             <div className="flex items-center space-x-2 mb-2">
               <Trophy className="w-4 h-4 text-yellow-400" />
-              <p className="text-xs text-slate-400">Games Won</p>
+              <p className="text-xs text-muted-foreground">Games Won</p>
             </div>
-            <p className="text-xl font-bold">{mockUser.gamesWon}</p>
+            <p className="text-xl font-bold text-card-foreground">{mockUser.gamesWon}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-700 border-slate-600">
+        <Card className="bg-card border-border">
           <CardContent className="p-3">
             <div className="flex items-center space-x-2 mb-2">
               <Puzzle className="w-4 h-4 text-purple-400" />
-              <p className="text-xs text-slate-400">Puzzles Solved</p>
+              <p className="text-xs text-muted-foreground">Puzzles Solved</p>
             </div>
-            <p className="text-xl font-bold">{mockUser.puzzlesSolved}</p>
+            <p className="text-xl font-bold text-card-foreground">{mockUser.puzzlesSolved}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-700 border-slate-600">
+        <Card className="bg-card border-border">
           <CardContent className="p-3">
             <div className="flex items-center space-x-2 mb-2">
               <Flame className="w-4 h-4 text-red-400" />
-              <p className="text-xs text-slate-400">Current Streak</p>
+              <p className="text-xs text-muted-foreground">Current Streak</p>
             </div>
-            <p className="text-xl font-bold">{mockUser.currentStreak}</p>
+            <p className="text-xl font-bold text-card-foreground">{mockUser.currentStreak}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-700 border-slate-600">
+        <Card className="bg-card border-border">
           <CardContent className="p-3">
             <div className="flex items-center space-x-2 mb-2">
               <CalendarCheck className="w-4 h-4 text-emerald-400" />
-              <p className="text-xs text-slate-400">Lessons</p>
+              <p className="text-xs text-muted-foreground">Lessons</p>
             </div>
-            <p className="text-xl font-bold">{mockUser.lessonsCompleted}</p>
+            <p className="text-xl font-bold text-card-foreground">{mockUser.lessonsCompleted}</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Recent Activity */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
           Recent Activity
         </h3>
         
@@ -162,14 +162,14 @@ export default function ProgressPage() {
           };
 
           return (
-            <Card key={activity.id} className="bg-slate-700 border-slate-600">
+            <Card key={activity.id} className="bg-card border-border">
               <CardContent className="p-3 flex items-center space-x-3">
                 <div className={`w-8 h-8 ${colorClasses[activity.color as keyof typeof colorClasses]} rounded-full flex items-center justify-center`}>
                   <IconComponent className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium">{activity.description}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-sm font-medium text-card-foreground">{activity.description}</p>
+                  <p className="text-xs text-muted-foreground">
                     {activity.timestamp} • {activity.detail}
                   </p>
                 </div>
