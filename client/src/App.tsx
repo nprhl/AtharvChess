@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/theme-provider";
 import GamePage from "@/pages/game";
 import LessonsPage from "@/pages/lessons";
 import LessonDetailPage from "@/pages/lesson-detail";
@@ -28,16 +29,18 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <div className="flex flex-col min-h-screen max-w-md mx-auto bg-slate-800 shadow-2xl">
-          <HeaderNavigation />
-          <main className="flex-1 overflow-y-auto">
-            <Router />
-          </main>
-          <BottomNavigation />
-        </div>
-        <Toaster />
-      </TooltipProvider>
+      <ThemeProvider defaultTheme="dark">
+        <TooltipProvider>
+          <div className="flex flex-col min-h-screen max-w-md mx-auto bg-background shadow-2xl">
+            <HeaderNavigation />
+            <main className="flex-1 overflow-y-auto">
+              <Router />
+            </main>
+            <BottomNavigation />
+          </div>
+          <Toaster />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

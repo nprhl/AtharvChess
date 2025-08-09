@@ -3,9 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, GraduationCap, Clock, TrendingUp, RotateCcw } from "lucide-react";
+import { Shield, GraduationCap, Clock, TrendingUp, RotateCcw, Palette } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/components/theme-provider";
 
 interface Settings {
   hintsEnabled: boolean;
@@ -19,6 +20,7 @@ interface Settings {
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [settings, setSettings] = useLocalStorage<Settings>('chess-settings', {
     hintsEnabled: true,
     focusMode: false,
@@ -103,6 +105,34 @@ export default function SettingsPage() {
                 checked={settings.progressTracking}
                 onCheckedChange={(checked) => updateSetting('progressTracking', checked)}
               />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Theme Settings */}
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <h3 className="font-semibold mb-3 flex items-center text-card-foreground">
+            <Palette className="w-5 h-5 mr-2 text-pink-400" />
+            Appearance
+          </h3>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm text-card-foreground">Theme</p>
+                <p className="text-xs text-muted-foreground">Choose light or dark theme</p>
+              </div>
+              <Select value={theme} onValueChange={(value: "light" | "dark") => setTheme(value)}>
+                <SelectTrigger className="w-24 bg-background border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">Light</SelectItem>
+                  <SelectItem value="dark">Dark</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>

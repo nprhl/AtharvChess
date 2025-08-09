@@ -13,7 +13,7 @@ export default function BottomNavigation() {
   const [location] = useLocation();
 
   return (
-    <nav className="bg-slate-900 border-t border-slate-700 px-4 py-2">
+    <nav className="bg-background border-t border-border px-4 py-2">
       <div className="flex items-center justify-around">
         {navItems.map(({ path, icon: Icon, label }) => {
           const isActive = location === path;
@@ -24,10 +24,10 @@ export default function BottomNavigation() {
                 isActive ? 'nav-tab active' : 'nav-tab'
               }`}>
                 <Icon className={`text-lg mb-1 ${
-                  isActive ? 'text-blue-400' : 'text-slate-300'
+                  isActive ? 'text-blue-400' : 'text-muted-foreground'
                 }`} size={20} />
                 <span className={`text-xs ${
-                  isActive ? 'text-blue-400 font-medium' : 'text-slate-300'
+                  isActive ? 'text-blue-400 font-medium' : 'text-muted-foreground'
                 }`}>
                   {label}
                 </span>
