@@ -65,7 +65,7 @@
 
 @layer components {
   .chess-piece {
-    font-size: clamp(1.8rem, 5vw, 2.5rem);
+    font-size: clamp(2.5rem, 7vw, 3.5rem);
     cursor: grab;
     user-select: none;
     transition: all 0.2s ease;

@@ -24,10 +24,10 @@ export default function BottomNavigation() {
                 isActive ? 'nav-tab active' : 'nav-tab'
               }`}>
                 <Icon className={`text-lg mb-1 ${
-                  isActive ? 'text-blue-400' : 'text-slate-500'
+                  isActive ? 'text-blue-400' : 'text-slate-300'
                 }`} size={20} />
                 <span className={`text-xs ${
-                  isActive ? 'text-blue-400 font-medium' : 'text-slate-500'
+                  isActive ? 'text-blue-400 font-medium' : 'text-slate-300'
                 }`}>
                   {label}
                 </span>

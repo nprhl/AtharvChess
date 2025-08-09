@@ -145,7 +145,7 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
     <div 
       ref={boardRef}
       className="grid grid-cols-8 gap-0 w-full aspect-square border-2 border-slate-400 rounded-md overflow-hidden shadow-xl mx-auto"
-      style={{ maxWidth: 'min(85vw, 400px)', height: 'auto' }}
+      style={{ maxWidth: 'min(90vw, 450px)', height: 'auto' }}
     >
       {ranks.map((rank, rankIndex) =>
         files.map((file, fileIndex) => renderSquare(fileIndex, rankIndex))
