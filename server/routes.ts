@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertGameSchema, insertSettingsSchema } from "@shared/schema";
 import { z } from "zod";
+import { ChessAI, type Difficulty } from "./chess-ai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
@@ -142,27 +143,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI hint endpoint (placeholder for future integration)
+  // AI move endpoint for computer opponent
+  app.post("/api/ai/move", async (req, res) => {
+    try {
+      const { fen, difficulty = 'beginner' } = req.body;
+      
+      if (!fen) {
+        return res.status(400).json({ message: "FEN string is required" });
+      }
+
+      const ai = new ChessAI(difficulty as Difficulty);
+      const bestMove = ai.getBestMove(fen);
+      
+      if (!bestMove) {
+        return res.status(400).json({ message: "No valid moves available" });
+      }
+      
+      res.json({
+        move: {
+          from: bestMove.from,
+          to: bestMove.to,
+          promotion: bestMove.promotion || null
+        },
+        san: bestMove.san,
+        difficulty
+      });
+    } catch (error) {
+      console.error('AI move error:', error);
+      res.status(500).json({ message: "AI service unavailable" });
+    }
+  });
+
+  // AI hint endpoint
   app.post("/api/ai/hint", async (req, res) => {
     try {
-      const { fen, difficulty } = req.body;
+      const { fen, difficulty = 'beginner' } = req.body;
       
-      // Placeholder response - would integrate with actual AI service
+      if (!fen) {
+        return res.status(400).json({ message: "FEN string is required" });
+      }
+
+      const ai = new ChessAI(difficulty as Difficulty);
+      const bestMove = ai.getBestMove(fen);
+      
+      if (!bestMove) {
+        return res.status(400).json({ message: "No valid moves available" });
+      }
+
       const hints = [
-        "Try moving your knight to f3! This develops your pieces and protects your central pawn.",
-        "Consider castling to keep your king safe.",
-        "Look for tactical opportunities with your bishops.",
-        "Control the center with your pawns."
+        `Try moving from ${bestMove.from} to ${bestMove.to}! This develops your pieces and improves your position.`,
+        `Consider the move ${bestMove.san}. This helps control the center.`,
+        `Look at ${bestMove.from}-${bestMove.to}. This move creates tactical opportunities.`,
+        `The computer suggests ${bestMove.san}. This strengthens your position.`
       ];
       
       const randomHint = hints[Math.floor(Math.random() * hints.length)];
       
       res.json({
         hint: randomHint,
-        move: null, // Would contain suggested move coordinates
+        move: {
+          from: bestMove.from,
+          to: bestMove.to,
+          promotion: bestMove.promotion || null
+        },
         explanation: "This move helps develop your pieces and improve your position."
       });
     } catch (error) {
+      console.error('AI hint error:', error);
       res.status(500).json({ message: "AI service unavailable" });
     }
   });

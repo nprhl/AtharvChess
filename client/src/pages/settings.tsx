@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, GraduationCap, Clock, TrendingUp, RotateCcw, Palette } from "lucide-react";
+import { Shield, GraduationCap, Clock, TrendingUp, RotateCcw, Palette, Gamepad2 } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/components/theme-provider";
@@ -16,6 +16,8 @@ interface Settings {
   breakReminders: number;
   difficulty: string;
   autoAdjustDifficulty: boolean;
+  gameMode: 'pvp' | 'pvc';
+  aiDifficulty: 'beginner' | 'intermediate' | 'advanced';
 }
 
 export default function SettingsPage() {
@@ -28,7 +30,9 @@ export default function SettingsPage() {
     dailyPlayTime: 30,
     breakReminders: 15,
     difficulty: 'beginner',
-    autoAdjustDifficulty: true
+    autoAdjustDifficulty: true,
+    gameMode: 'pvc',
+    aiDifficulty: 'beginner'
   });
 
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
@@ -48,7 +52,9 @@ export default function SettingsPage() {
       dailyPlayTime: 30,
       breakReminders: 15,
       difficulty: 'beginner',
-      autoAdjustDifficulty: true
+      autoAdjustDifficulty: true,
+      gameMode: 'pvc',
+      aiDifficulty: 'beginner'
     });
     toast({
       title: "Settings reset",
@@ -106,6 +112,53 @@ export default function SettingsPage() {
                 onCheckedChange={(checked) => updateSetting('progressTracking', checked)}
               />
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Game Mode Settings */}
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <h3 className="font-semibold mb-3 flex items-center text-card-foreground">
+            <Gamepad2 className="w-5 h-5 mr-2 text-blue-400" />
+            Game Mode
+          </h3>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm text-card-foreground">Play Against</p>
+                <p className="text-xs text-muted-foreground">Choose opponent type</p>
+              </div>
+              <Select value={settings.gameMode} onValueChange={(value: "pvp" | "pvc") => updateSetting('gameMode', value)}>
+                <SelectTrigger className="w-32 bg-background border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pvp">Human</SelectItem>
+                  <SelectItem value="pvc">Computer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {settings.gameMode === 'pvc' && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm text-card-foreground">AI Difficulty</p>
+                  <p className="text-xs text-muted-foreground">Computer strength level</p>
+                </div>
+                <Select value={settings.aiDifficulty} onValueChange={(value: "beginner" | "intermediate" | "advanced") => updateSetting('aiDifficulty', value)}>
+                  <SelectTrigger className="w-32 bg-background border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -2,10 +2,23 @@ import { useState } from "react";
 import ChessBoard from "@/components/chess-board";
 import AIHintCard from "@/components/ai-hint-card";
 import { useChessGame } from "@/hooks/use-chess-game";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
 import { Undo, HelpCircle } from "lucide-react";
 
 export default function GamePage() {
+  const [settings] = useLocalStorage('chess-settings', {
+    hintsEnabled: true,
+    focusMode: false,
+    progressTracking: true,
+    dailyPlayTime: 30,
+    breakReminders: 15,
+    difficulty: 'beginner',
+    autoAdjustDifficulty: true,
+    gameMode: 'pvc' as 'pvp' | 'pvc',
+    aiDifficulty: 'beginner' as 'beginner' | 'intermediate' | 'advanced'
+  });
+
   const { 
     game, 
     makeMove, 
@@ -13,8 +26,15 @@ export default function GamePage() {
     getValidMoves, 
     isGameOver, 
     turn,
-    moveHistory 
-  } = useChessGame();
+    moveHistory,
+    isComputerThinking,
+    gameMode,
+    playerColor
+  } = useChessGame({ 
+    gameMode: settings.gameMode,
+    difficulty: settings.aiDifficulty,
+    playerColor: 'w'
+  });
   
   const [showHint, setShowHint] = useState(false);
   const [currentHint, setCurrentHint] = useState<string | null>(null);
@@ -43,14 +63,22 @@ export default function GamePage() {
   return (
     <section className="p-3 space-y-3 flex flex-col h-full">
       {/* Game Status Bar */}
-      <div className="bg-slate-700 rounded-lg p-3 flex items-center justify-between flex-shrink-0">
+      <div className="bg-card border-border rounded-lg p-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse" />
-          <span className="text-sm font-medium">
-            {turn === 'w' ? 'Your Turn' : "Opponent's Turn"}
+          <div className={`w-3 h-3 rounded-full ${
+            isComputerThinking ? 'bg-orange-400 animate-pulse' : 
+            (gameMode === 'pvc' && turn !== playerColor) ? 'bg-red-400 animate-pulse' : 
+            'bg-emerald-400 animate-pulse'
+          }`} />
+          <span className="text-sm font-medium text-card-foreground">
+            {isComputerThinking ? 'Computer is thinking...' :
+             gameMode === 'pvc' ? 
+               (turn === playerColor ? 'Your Turn' : 'Computer\'s Turn') :
+               (turn === 'w' ? 'White\'s Turn' : 'Black\'s Turn')
+            }
           </span>
         </div>
-        <div className="text-xs text-slate-400">
+        <div className="text-xs text-muted-foreground">
           Move {Math.ceil(moveHistory.length / 2)}
         </div>
       </div>
@@ -61,7 +89,7 @@ export default function GamePage() {
           game={game}
           onMove={makeMove}
           getValidMoves={getValidMoves}
-          disabled={isGameOver()}
+          disabled={isGameOver() || isComputerThinking || (gameMode === 'pvc' && turn !== playerColor)}
         />
       </div>
 
