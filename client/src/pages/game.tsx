@@ -4,7 +4,18 @@ import AIHintCard from "@/components/ai-hint-card";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
-import { Undo, HelpCircle } from "lucide-react";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Undo, HelpCircle, RotateCcw } from "lucide-react";
 
 export default function GamePage() {
   const [settings] = useLocalStorage('chess-settings', {
@@ -25,6 +36,9 @@ export default function GamePage() {
     undoMove, 
     getValidMoves, 
     isGameOver, 
+    isCheckmate,
+    isDraw,
+    resetGame,
     turn,
     moveHistory,
     isComputerThinking,
@@ -59,6 +73,15 @@ export default function GamePage() {
       console.error('Failed to get hint:', error);
     }
   };
+
+  const handleNewGame = () => {
+    resetGame();
+    setShowHint(false);
+    setCurrentHint(null);
+  };
+
+  const isGameInProgress = moveHistory.length > 0 && !isGameOver();
+  const gameOverReason = isCheckmate() ? 'Checkmate!' : isDraw() ? 'Draw!' : null;
 
   return (
     <section className="p-3 space-y-3 flex flex-col h-full">
@@ -107,29 +130,78 @@ export default function GamePage() {
         <div className="flex space-x-2">
           <Button 
             variant="secondary" 
-            className="flex-1 bg-slate-700 hover:bg-slate-600"
+            className="flex-1 bg-card border-border hover:bg-accent text-card-foreground"
             onClick={undoMove}
             disabled={moveHistory.length === 0}
           >
             <Undo className="w-4 h-4 mr-2" />
             Undo
           </Button>
-          <Button 
-            className="flex-1 bg-blue-600 hover:bg-blue-700"
-            onClick={handleGetHint}
-          >
-            <HelpCircle className="w-4 h-4 mr-2" />
-            Hint
-          </Button>
+
+          {/* New Game Button */}
+          {isGameInProgress ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="secondary"
+                  className="flex-1 bg-card border-border hover:bg-accent text-card-foreground"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  New Game
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-card border-border">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-card-foreground">Start New Game?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-muted-foreground">
+                    Are you sure you want to start a new game? Your current progress will be lost.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="border-border bg-background hover:bg-accent text-card-foreground">
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleNewGame}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Start New Game
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : (
+            <Button 
+              variant="secondary"
+              className="flex-1 bg-card border-border hover:bg-accent text-card-foreground"
+              onClick={handleNewGame}
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              New Game
+            </Button>
+          )}
+
+          {settings.hintsEnabled && !isGameOver() && (
+            <Button 
+              className="flex-1 bg-blue-600 hover:bg-blue-700"
+              onClick={handleGetHint}
+            >
+              <HelpCircle className="w-4 h-4 mr-2" />
+              Hint
+            </Button>
+          )}
         </div>
 
         {/* Game Over Message */}
-        {isGameOver() && (
-          <div className="bg-yellow-600 rounded-lg p-4">
-            <h3 className="font-semibold text-center">
-              {game.isCheckmate() ? 'Checkmate!' : 
-               game.isDraw() ? 'Draw!' : 'Game Over'}
-            </h3>
+        {isGameOver() && gameOverReason && (
+          <div className="bg-card border-border rounded-lg p-4 text-center">
+            <h3 className="text-lg font-semibold text-card-foreground mb-2">{gameOverReason}</h3>
+            <p className="text-sm text-muted-foreground">
+              {isCheckmate() 
+                ? (turn === 'w' ? 'Black wins!' : 'White wins!')
+                : 'The game ended in a draw.'
+              }
+            </p>
           </div>
         )}
       </div>

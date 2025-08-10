@@ -49,15 +49,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
 
   // Computer move function
   const makeComputerMove = useCallback(async (): Promise<boolean> => {
-    console.log('makeComputerMove called', { 
-      currentGameMode, 
-      isComputerThinking, 
-      currentTurn: gameEngine.turn,
-      currentPlayerColor 
-    });
-
     if (currentGameMode !== 'pvc' || isComputerThinking) {
-      console.log('Early return - mode or thinking', { currentGameMode, isComputerThinking });
       return false;
     }
 
@@ -66,14 +58,10 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     const isComputerTurn = (currentPlayerColor === 'w' && currentTurn === 'b') || 
                           (currentPlayerColor === 'b' && currentTurn === 'w');
     
-    console.log('Turn check', { currentTurn, currentPlayerColor, isComputerTurn });
-    
     if (!isComputerTurn) {
-      console.log('Not computer turn');
       return false;
     }
 
-    console.log('Making computer move request with FEN:', gameEngine.fen());
     setIsComputerThinking(true);
     
     try {
@@ -88,16 +76,12 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('AI move response:', data);
         const success = gameEngine.makeMove(data.move.from, data.move.to, data.move.promotion);
-        console.log('Move success:', success);
         if (success) {
           triggerUpdate();
           saveGameState();
           return true;
         }
-      } else {
-        console.error('AI move request failed:', response.status, await response.text());
       }
     } catch (error) {
       console.error('Failed to get computer move:', error);
@@ -109,24 +93,18 @@ export function useChessGame(options: UseChessGameOptions = {}) {
   }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentDifficulty, currentPlayerColor, isComputerThinking]);
 
   const makeMove = useCallback((from: Square, to: Square, promotion?: string): boolean => {
-    console.log('makeMove called', { from, to, currentGameMode, currentPlayerColor });
-    
     // In computer mode, only allow player moves on their turn
     if (currentGameMode === 'pvc') {
       const currentTurn = gameEngine.turn;
       const isPlayerTurn = (currentPlayerColor === 'w' && currentTurn === 'w') || 
                           (currentPlayerColor === 'b' && currentTurn === 'b');
       
-      console.log('Player turn check', { currentTurn, isPlayerTurn, isComputerThinking });
-      
       if (!isPlayerTurn || isComputerThinking) {
-        console.log('Player move blocked');
         return false;
       }
     }
 
     const success = gameEngine.makeMove(from, to, promotion);
-    console.log('Player move success:', success);
     
     if (success) {
       triggerUpdate();
@@ -134,9 +112,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       
       // Trigger computer move after player move in PvC mode
       if (currentGameMode === 'pvc') {
-        console.log('Scheduling computer move in 800ms');
         setTimeout(() => {
-          console.log('Timeout triggered, calling makeComputerMove');
           makeComputerMove();
         }, 800); // Small delay for better UX
       }
