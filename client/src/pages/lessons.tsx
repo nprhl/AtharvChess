@@ -96,13 +96,25 @@ export default function LessonsPage() {
           </div>
           {user?.eloRating && (
             <div className="mt-3 p-2 bg-slate-600/50 rounded-lg">
-              <div className="flex items-center space-x-2 text-xs text-slate-300">
-                <Brain className="w-3 h-3 text-blue-400" />
-                <span>
-                  {user.eloRating > 1200 ? "Advanced content focused on tactics and strategy" :
-                   user.eloRating > 1000 ? "Intermediate lessons with tactical training" :
-                   "Beginner-friendly lessons with fundamentals"}
-                </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-xs text-slate-300">
+                  <Brain className="w-3 h-3 text-blue-400" />
+                  <span>
+                    {user.eloRating > 1200 ? "Advanced content focused on tactics and strategy" :
+                     user.eloRating > 1000 ? "Intermediate lessons with tactical training" :
+                     "Beginner-friendly lessons with fundamentals"}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-xs border-slate-500 text-slate-300 hover:bg-slate-600"
+                  onClick={() => {
+                    // Could navigate to a detailed explanation or settings
+                  }}
+                >
+                  Learn More
+                </Button>
               </div>
             </div>
           )}
@@ -173,9 +185,43 @@ export default function LessonsPage() {
         </Card>
       )}
 
-      {/* Upcoming Lessons */}
+      {/* Recommended Lessons */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-white">Upcoming Lessons</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-white">AI Recommendations for You</h3>
+          <Badge variant="outline" className="border-blue-400 text-blue-400 text-xs">
+            ELO {user?.eloRating || 850} Level
+          </Badge>
+        </div>
+        
+        {/* Skill Level Explanation */}
+        <Card className="bg-slate-800/50 border-slate-600">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3 mb-2">
+              <Brain className="w-5 h-5 text-blue-400" />
+              <h4 className="font-medium text-white">Why these lessons?</h4>
+            </div>
+            <p className="text-sm text-slate-300">
+              {user?.eloRating && user.eloRating > 1200 ? 
+                "Advanced player focus: Complex tactics, positional play, and strategic concepts. Basic lessons are hidden." :
+              user?.eloRating && user.eloRating > 1000 ? 
+                "Intermediate player focus: Tactical training, opening principles, and endgame basics. You've moved beyond basics." :
+                "Beginner-friendly focus: Piece coordination, simple tactics, and fundamental concepts. Building your foundation."
+              }
+            </p>
+            <div className="flex items-center space-x-4 mt-3 text-xs text-slate-400">
+              <span className="flex items-center space-x-1">
+                <Target className="w-3 h-3" />
+                <span>Focus: {user?.eloRating && user.eloRating > 1000 ? 'Tactics & Strategy' : 'Fundamentals'}</span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <Sparkles className="w-3 h-3" />
+                <span>{lessons.length} lessons selected from {user?.eloRating && user.eloRating > 1200 ? '20+' : '15+'} total</span>
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+        
         <div className="space-y-3">
           {upcomingLessons.map((lesson: any, index: number) => (
             <Card key={lesson.id} className="bg-slate-700/50 border-slate-600">
@@ -187,11 +233,36 @@ export default function LessonsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
                       <h4 className="font-medium text-white truncate">{lesson.title}</h4>
-                      <Badge className={`${getDifficultyColor(lesson.difficulty)} text-white text-xs flex-shrink-0`}>
-                        {lesson.difficulty}
-                      </Badge>
+                      <div className="flex items-center space-x-1">
+                        <Badge className={`${getDifficultyColor(lesson.difficulty)} text-white text-xs flex-shrink-0`}>
+                          {lesson.difficulty}
+                        </Badge>
+                        {/* AI Recommendation Reason Badge */}
+                        {lesson.title.toLowerCase().includes('tactics') && user?.eloRating && user.eloRating >= 800 && (
+                          <Badge variant="outline" className="border-green-400 text-green-400 text-xs">
+                            Key Skill
+                          </Badge>
+                        )}
+                        {lesson.difficulty === 'intermediate' && user?.eloRating && user.eloRating >= 1000 && (
+                          <Badge variant="outline" className="border-blue-400 text-blue-400 text-xs">
+                            Perfect Match
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <p className="text-sm text-slate-400 truncate">{lesson.description}</p>
+                    {/* AI Recommendation Reason */}
+                    <div className="mt-2 text-xs text-slate-500">
+                      <span className="flex items-center space-x-1">
+                        <Brain className="w-3 h-3 text-blue-400" />
+                        <span>
+                          {lesson.title.toLowerCase().includes('tactics') ? 'Recommended: Critical for your rating improvement' :
+                           lesson.difficulty === 'intermediate' && user?.eloRating && user.eloRating >= 1000 ? 'Recommended: Matches your skill level' :
+                           lesson.difficulty === 'beginner' && user?.eloRating && user.eloRating < 1000 ? 'Recommended: Builds foundation' :
+                           'Recommended: AI-selected for your progress'}
+                        </span>
+                      </span>
+                    </div>
                     {lesson.content && (
                       <div className="flex items-center space-x-3 mt-2 text-xs text-slate-500">
                         <span className="flex items-center space-x-1">
@@ -219,6 +290,51 @@ export default function LessonsPage() {
           ))}
         </div>
       </div>
+
+      {/* Learning Path Visualization */}
+      <Card className="bg-slate-800 border-slate-600">
+        <CardHeader>
+          <h3 className="font-semibold text-white flex items-center space-x-2">
+            <Target className="w-5 h-5 text-green-400" />
+            <span>Your Learning Path</span>
+          </h3>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Current Stage */}
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                1
+              </div>
+              <div className="flex-1">
+                <h4 className="text-white font-medium">
+                  {user?.eloRating && user.eloRating > 1200 ? 'Advanced Tactics' :
+                   user?.eloRating && user.eloRating > 1000 ? 'Intermediate Skills' :
+                   'Foundation Building'}
+                </h4>
+                <p className="text-slate-400 text-sm">Current stage</p>
+              </div>
+              <Badge className="bg-green-500 text-white">Active</Badge>
+            </div>
+            
+            {/* Next Stage */}
+            <div className="flex items-center space-x-4 opacity-60">
+              <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center text-slate-300 text-sm font-bold">
+                2
+              </div>
+              <div className="flex-1">
+                <h4 className="text-slate-300 font-medium">
+                  {user?.eloRating && user.eloRating > 1200 ? 'Master Strategy' :
+                   user?.eloRating && user.eloRating > 1000 ? 'Advanced Tactics' :
+                   'Tactical Training'}
+                </h4>
+                <p className="text-slate-500 text-sm">Next milestone</p>
+              </div>
+              <Badge variant="outline" className="border-slate-500 text-slate-500">Locked</Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Achievement Section */}
       <Card className="bg-gradient-to-r from-amber-500 to-orange-600 border-none text-white">
