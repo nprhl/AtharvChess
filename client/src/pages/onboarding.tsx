@@ -82,6 +82,9 @@ export default function OnboardingPage() {
         setGame(newGame);
         setStartTime(Date.now());
         setShowSolution(false);
+        // Reset attempts for the new puzzle
+        setAttempts(prev => prev.filter(a => a.puzzleId !== currentPuzzle.id));
+        console.log('Started new puzzle:', currentPuzzle.id, 'Solution:', currentPuzzle.solution);
       } catch (error) {
         console.error('Invalid FEN string for puzzle:', currentPuzzle.id, error);
         toast({
@@ -102,14 +105,22 @@ export default function OnboardingPage() {
   const handleMove = (from: Square, to: Square) => {
     if (!currentPuzzle || showSolution) return false;
 
+    console.log('Move attempted:', { from, to });
+    console.log('Current puzzle solution:', currentPuzzle.solution);
+
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
     const solution = currentPuzzle.solution;
-    const moveIndex = attempts.filter(a => a.puzzleId === currentPuzzle.id).length;
+    const currentAttempts = attempts.filter(a => a.puzzleId === currentPuzzle.id);
+    const moveIndex = currentAttempts.length;
+    
+    console.log('Move index:', moveIndex, 'Solution length:', solution.length);
     
     let solved = false;
     if (moveIndex < solution.length) {
       const expectedMove = solution[moveIndex];
+      console.log('Expected move:', expectedMove);
       solved = expectedMove.from === from && expectedMove.to === to;
+      console.log('Is move correct?', solved);
     }
 
     // Make the move on the board
@@ -118,10 +129,13 @@ export default function OnboardingPage() {
       const move = newGame.move({ from, to });
       if (move) {
         setGame(newGame);
+        console.log('Move executed successfully:', move);
       } else {
+        console.log('Invalid chess move');
         return false; // Invalid move
       }
     } catch (error) {
+      console.error('Chess move error:', error);
       return false; // Invalid move
     }
     
@@ -148,11 +162,21 @@ export default function OnboardingPage() {
         }
       }, 1500);
     } else {
-      toast({
-        title: 'Not quite right',
-        description: 'Try again or use the Show Solution button.',
-        variant: 'destructive',
-      });
+      // Check if this was the first move of the solution to provide better feedback
+      if (moveIndex === 0 && solution.length > 0) {
+        const expectedMove = solution[0];
+        toast({
+          title: 'Not quite right',
+          description: `Hint: Try moving from ${expectedMove.from} to ${expectedMove.to}`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Not quite right',
+          description: 'Try again or use the Show Solution button.',
+          variant: 'destructive',
+        });
+      }
     }
 
     return true;
