@@ -33,7 +33,7 @@ export class PuzzleService {
         description: "Find checkmate in one move"
       },
       {
-        fen: "8/8/8/8/4r3/8/4K3/4Q3 w - - 0 1",
+        fen: "8/8/8/8/4r3/8/4K1k1/4Q3 w - - 0 1",
         solution: [{ from: 'e1', to: 'e4' }],
         rating: 1000,
         tags: ['capture', 'exchange'],

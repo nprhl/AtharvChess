@@ -36,15 +36,6 @@ export default function OnboardingPage() {
 
   const currentPuzzle = puzzles[currentPuzzleIndex];
 
-  useEffect(() => {
-    if (currentPuzzle) {
-      const newGame = new Chess(currentPuzzle.fen);
-      setGame(newGame);
-      setStartTime(Date.now());
-      setShowSolution(false);
-    }
-  }, [currentPuzzle]);
-
   const recordAttemptMutation = useMutation({
     mutationFn: async (attemptData: any) => {
       const response = await fetch('/api/onboarding/puzzle-attempt', {
@@ -83,6 +74,30 @@ export default function OnboardingPage() {
       setLocation('/');
     },
   });
+
+  useEffect(() => {
+    if (currentPuzzle) {
+      try {
+        const newGame = new Chess(currentPuzzle.fen);
+        setGame(newGame);
+        setStartTime(Date.now());
+        setShowSolution(false);
+      } catch (error) {
+        console.error('Invalid FEN string for puzzle:', currentPuzzle.id, error);
+        toast({
+          title: 'Puzzle Error',
+          description: 'This puzzle has an invalid position. Skipping to next puzzle.',
+          variant: 'destructive',
+        });
+        // Skip to next puzzle
+        if (currentPuzzleIndex < puzzles.length - 1) {
+          setCurrentPuzzleIndex(prev => prev + 1);
+        } else {
+          completeOnboardingMutation.mutate();
+        }
+      }
+    }
+  }, [currentPuzzle, currentPuzzleIndex, puzzles.length, completeOnboardingMutation, toast]);
 
   const handleMove = (from: Square, to: Square) => {
     if (!currentPuzzle || showSolution) return false;
