@@ -165,25 +165,52 @@ export default function OnboardingPage() {
   const handleShowSolution = () => {
     if (!currentPuzzle) return;
     
+    console.log('Show solution clicked for puzzle:', currentPuzzle.id);
+    console.log('Current solution:', currentPuzzle.solution);
+    
     setShowSolution(true);
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
     
     // Show the first move of the solution
     const solution = currentPuzzle.solution;
-    if (solution.length > 0) {
+    if (solution && solution.length > 0) {
       const firstMove = solution[0];
+      console.log('Attempting to show move:', firstMove);
+      
       try {
-        const newGame = new Chess(game.fen());
-        newGame.move({ from: firstMove.from, to: firstMove.to });
-        setGame(newGame);
+        const newGame = new Chess(currentPuzzle.fen); // Reset to original position first
+        const move = newGame.move({ from: firstMove.from, to: firstMove.to });
+        console.log('Move result:', move);
         
-        toast({
-          title: 'Solution Shown',
-          description: `The correct move was ${firstMove.from} to ${firstMove.to}`,
-        });
+        if (move) {
+          setGame(newGame);
+          toast({
+            title: 'Solution Shown',
+            description: `The correct move is ${firstMove.from} to ${firstMove.to}`,
+          });
+        } else {
+          console.error('Invalid move in solution:', firstMove);
+          toast({
+            title: 'Error',
+            description: 'Unable to show solution - invalid move',
+            variant: 'destructive',
+          });
+        }
       } catch (error) {
         console.error('Error showing solution:', error);
+        toast({
+          title: 'Error',
+          description: 'Unable to show solution',
+          variant: 'destructive',
+        });
       }
+    } else {
+      console.error('No solution available for puzzle');
+      toast({
+        title: 'Error',
+        description: 'No solution available for this puzzle',
+        variant: 'destructive',
+      });
     }
     
     const attemptData = {
