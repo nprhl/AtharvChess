@@ -263,11 +263,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lesson routes
-  app.get("/api/lessons", async (req, res) => {
+  app.get("/api/lessons", requireAuth, async (req, res) => {
     try {
-      const lessons = await storage.getAllLessons();
-      res.json(lessons);
+      const user = req.user as any;
+      const dbUser = await storage.getUser(user.id);
+      const userElo = dbUser?.eloRating || 1200;
+      
+      console.log(`Getting AI-recommended lessons for user ${user.id} with ELO ${userElo}`);
+      
+      // Get AI-recommended lessons based on user's ELO and progress
+      const recommendedLessons = await puzzleService.getRecommendedLessons(user.id, userElo);
+      
+      res.json(recommendedLessons);
     } catch (error) {
+      console.error("Error fetching recommended lessons:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

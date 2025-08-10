@@ -1,14 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, BookOpen, Trophy, Clock, Target, Play, Star } from "lucide-react";
+import { CheckCircle, BookOpen, Trophy, Clock, Target, Play, Star, Brain, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LessonsPage() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   
   const { data: lessons = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/lessons']
@@ -59,19 +61,27 @@ export default function LessonsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Chess Lessons</h1>
-          <p className="text-slate-400 text-sm">Master chess fundamentals step by step</p>
+          <h1 className="text-2xl font-bold text-white">AI-Personalized Lessons</h1>
+          <div className="flex items-center space-x-2">
+            <Brain className="w-4 h-4 text-blue-400" />
+            <p className="text-slate-400 text-sm">
+              Tailored for your ELO rating ({user?.eloRating || 'calculating...'})
+            </p>
+          </div>
         </div>
-        <Badge className="bg-emerald-500 text-white font-semibold px-3 py-1">
-          Level 1
-        </Badge>
+        <div className="flex items-center space-x-2">
+          <Badge className="bg-blue-600 text-white font-semibold px-3 py-1 flex items-center space-x-1">
+            <Sparkles className="w-3 h-3" />
+            <span>AI Selected</span>
+          </Badge>
+        </div>
       </div>
 
       {/* Progress Overview */}
       <Card className="bg-slate-700 border-slate-600">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-white">Your Progress</h3>
+            <h3 className="font-semibold text-white">AI-Recommended Progress</h3>
             <div className="flex items-center space-x-2 text-emerald-400">
               <Trophy className="w-4 h-4" />
               <span className="text-sm font-medium">0/{lessons.length} Complete</span>
@@ -81,9 +91,21 @@ export default function LessonsPage() {
         <CardContent className="pt-0">
           <Progress value={0} className="h-2 mb-3" />
           <div className="flex justify-between text-xs text-slate-400">
-            <span>Just getting started!</span>
+            <span>Lessons matched to your skill level</span>
             <span>0% Complete</span>
           </div>
+          {user?.eloRating && (
+            <div className="mt-3 p-2 bg-slate-600/50 rounded-lg">
+              <div className="flex items-center space-x-2 text-xs text-slate-300">
+                <Brain className="w-3 h-3 text-blue-400" />
+                <span>
+                  {user.eloRating > 1200 ? "Advanced content focused on tactics and strategy" :
+                   user.eloRating > 1000 ? "Intermediate lessons with tactical training" :
+                   "Beginner-friendly lessons with fundamentals"}
+                </span>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

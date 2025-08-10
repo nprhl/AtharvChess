@@ -162,30 +162,157 @@ export class PuzzleService {
     };
   }
 
-  // Get recommended lessons based on ELO and performance
+  // Get AI-recommended lessons based on ELO and performance
   async getRecommendedLessons(userId: number, userElo: number): Promise<any[]> {
     const userProgress = await storage.getUserLessonProgress(userId);
     const completedLessonIds = userProgress
       .filter(p => p.completed)
       .map(p => p.lessonId);
 
-    let difficulty: string;
-    if (userElo < 1000) {
-      difficulty = 'beginner';
-    } else if (userElo < 1400) {
-      difficulty = 'intermediate';
-    } else {
-      difficulty = 'advanced';
-    }
-
-    const lessonsForDifficulty = await storage.getLessonsByDifficulty(difficulty);
+    // AI-driven lesson filtering based on ELO rating
+    const allLessons = await storage.getAllLessons();
+    const skillAnalysis = this.analyzeUserSkillLevel(userElo);
     
-    // Filter out completed lessons and return next recommendations
-    const recommendedLessons = lessonsForDifficulty
-      .filter(lesson => !completedLessonIds.includes(lesson.id))
-      .slice(0, 3); // Return top 3 recommendations
+    console.log(`User ELO: ${userElo}, Skill Analysis:`, skillAnalysis);
+    
+    // Filter lessons based on skill level and prerequisites
+    const appropriateLessons = allLessons.filter(lesson => {
+      // Skip completed lessons
+      if (completedLessonIds.includes(lesson.id)) {
+        return false;
+      }
+      
+      // Apply AI-driven filtering logic
+      return this.isLessonAppropriate(lesson, skillAnalysis, userElo);
+    });
 
-    return recommendedLessons;
+    // Sort lessons by priority for user's skill level
+    const prioritizedLessons = this.prioritizeLessonsForUser(appropriateLessons, skillAnalysis, userElo);
+    
+    // Return recommended lessons (limit based on skill level)
+    const maxLessons = userElo > 1200 ? 5 : 8; // Advanced players see fewer, focused lessons
+    return prioritizedLessons.slice(0, maxLessons);
+  }
+
+  // Analyze user's chess skill level based on ELO
+  private analyzeUserSkillLevel(elo: number) {
+    if (elo < 800) {
+      return {
+        level: 'absolute_beginner',
+        needsBasics: true,
+        canHandleComplex: false,
+        focus: ['piece_movement', 'basic_rules', 'simple_tactics']
+      };
+    } else if (elo < 1000) {
+      return {
+        level: 'beginner',
+        needsBasics: true,
+        canHandleComplex: false,
+        focus: ['piece_coordination', 'basic_tactics', 'simple_endgames']
+      };
+    } else if (elo < 1200) {
+      return {
+        level: 'advanced_beginner',
+        needsBasics: false,
+        canHandleComplex: true,
+        focus: ['tactics', 'opening_principles', 'endgame_basics']
+      };
+    } else if (elo < 1500) {
+      return {
+        level: 'intermediate',
+        needsBasics: false,
+        canHandleComplex: true,
+        focus: ['advanced_tactics', 'positional_play', 'complex_endgames']
+      };
+    } else {
+      return {
+        level: 'advanced',
+        needsBasics: false,
+        canHandleComplex: true,
+        focus: ['strategic_concepts', 'advanced_endgames', 'opening_theory']
+      };
+    }
+  }
+
+  // Check if a lesson is appropriate for the user's skill level
+  private isLessonAppropriate(lesson: any, skillAnalysis: any, userElo: number): boolean {
+    const title = lesson.title.toLowerCase();
+    const description = lesson.description.toLowerCase();
+    const difficulty = lesson.difficulty;
+    
+    // For very basic lessons (ELO > 1000 shouldn't see these)
+    const veryBasicTopics = [
+      'basic pawn moves', 'how pieces move', 'basic chess pieces', 
+      'piece movement', 'setting up the board'
+    ];
+    
+    const isVeryBasic = veryBasicTopics.some(topic => 
+      title.includes(topic) || description.includes(topic)
+    );
+    
+    if (isVeryBasic && userElo > 1000) {
+      return false; // Skip very basic lessons for experienced players
+    }
+    
+    // For advanced players (ELO > 1200), skip beginner lessons
+    if (difficulty === 'beginner' && userElo > 1200) {
+      return false;
+    }
+    
+    // For beginners (ELO < 1000), skip advanced lessons
+    if (difficulty === 'advanced' && userElo < 1000) {
+      return false;
+    }
+    
+    // Check if lesson topics match user's focus areas
+    const lessonContent = `${title} ${description}`.toLowerCase();
+    const hasRelevantContent = skillAnalysis.focus.some((focus: string) => 
+      lessonContent.includes(focus.replace('_', ' '))
+    );
+    
+    return hasRelevantContent || difficulty === 'intermediate'; // Always include intermediate lessons
+  }
+
+  // Prioritize lessons based on user's skill level and needs
+  private prioritizeLessonsForUser(lessons: any[], skillAnalysis: any, userElo: number): any[] {
+    return lessons.sort((a, b) => {
+      let scoreA = 0;
+      let scoreB = 0;
+      
+      // Priority scoring based on skill analysis
+      const contentA = `${a.title} ${a.description}`.toLowerCase();
+      const contentB = `${b.title} ${b.description}`.toLowerCase();
+      
+      // Score based on focus areas
+      skillAnalysis.focus.forEach((focus: string, index: number) => {
+        const priority = skillAnalysis.focus.length - index; // Higher priority for earlier focus items
+        
+        if (contentA.includes(focus.replace('_', ' '))) {
+          scoreA += priority * 10;
+        }
+        if (contentB.includes(focus.replace('_', ' '))) {
+          scoreB += priority * 10;
+        }
+      });
+      
+      // Difficulty-based scoring
+      const difficultyPriority = {
+        'beginner': userElo < 1000 ? 5 : (userElo < 1200 ? 2 : 0),
+        'intermediate': userElo > 800 ? 8 : 3,
+        'advanced': userElo > 1200 ? 10 : (userElo > 1000 ? 3 : 0)
+      };
+      
+      scoreA += difficultyPriority[a.difficulty as keyof typeof difficultyPriority] || 0;
+      scoreB += difficultyPriority[b.difficulty as keyof typeof difficultyPriority] || 0;
+      
+      // Tactical lessons get priority for intermediate players
+      if (userElo >= 1000 && userElo <= 1400) {
+        if (contentA.includes('tactic')) scoreA += 15;
+        if (contentB.includes('tactic')) scoreB += 15;
+      }
+      
+      return scoreB - scoreA; // Sort by highest score first
+    });
   }
 
   // Calculate final assessment ELO based on all user's puzzle attempts
