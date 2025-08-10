@@ -17,25 +17,10 @@ export class ChessAI {
       return null;
     }
 
-    // Difficulty-based move selection
-    switch (this.difficulty) {
-      case 'beginner':
-        // 80% chance of random move for true beginner experience
-        if (Math.random() < 0.8) {
-          return this.getRandomMove(possibleMoves);
-        }
-        break;
-      
-      case 'intermediate':
-        // 30% chance of random move, but also consider a few top moves
-        if (Math.random() < 0.3) {
-          return this.getRandomMove(possibleMoves);
-        }
-        break;
-      
-      case 'advanced':
-        // No random moves, always play the best calculated move
-        break;
+    // First, check for critical moves that should always be played
+    const criticalMove = this.findCriticalMove(chess, possibleMoves);
+    if (criticalMove) {
+      return criticalMove;
     }
 
     // Evaluate all moves and pick the best one
@@ -48,11 +33,11 @@ export class ChessAI {
         chess.move(move);
         let score = this.evaluatePosition(chess, searchDepth);
         
-        // Add difficulty-based randomness to scoring
+        // Add difficulty-based randomness to scoring (much less than before)
         if (this.difficulty === 'beginner') {
-          score += (Math.random() - 0.5) * 100; // High randomness
+          score += (Math.random() - 0.5) * 20; // Reduced randomness
         } else if (this.difficulty === 'intermediate') {
-          score += (Math.random() - 0.5) * 30; // Medium randomness
+          score += (Math.random() - 0.5) * 10; // Small randomness
         }
         // Advanced has no randomness
         
@@ -82,6 +67,50 @@ export class ChessAI {
 
   private getRandomMove(moves: Move[]): Move {
     return moves[Math.floor(Math.random() * moves.length)];
+  }
+
+  private findCriticalMove(chess: Chess, moves: Move[]): Move | null {
+    // Check for checkmate in one
+    for (const move of moves) {
+      chess.move(move);
+      if (chess.isCheckmate()) {
+        chess.undo();
+        return move;
+      }
+      chess.undo();
+    }
+
+    // Check for captures of valuable pieces
+    const captures = moves.filter(move => move.captured);
+    if (captures.length > 0) {
+      // Sort captures by piece value
+      captures.sort((a, b) => {
+        const pieceValues = { 'p': 1, 'n': 3, 'b': 3, 'r': 5, 'q': 9, 'k': 0 };
+        const valueA = pieceValues[a.captured as keyof typeof pieceValues] || 0;
+        const valueB = pieceValues[b.captured as keyof typeof pieceValues] || 0;
+        return valueB - valueA;
+      });
+      
+      // Always take the most valuable piece
+      if (captures[0].captured !== 'p' || this.difficulty !== 'beginner') {
+        return captures[0];
+      }
+    }
+
+    // Check if we're in check - must get out of check
+    if (chess.inCheck()) {
+      // Return any move that gets out of check (first valid one)
+      for (const move of moves) {
+        chess.move(move);
+        const stillInCheck = chess.inCheck();
+        chess.undo();
+        if (!stillInCheck) {
+          return move;
+        }
+      }
+    }
+
+    return null; // No critical move found
   }
 
   private evaluatePosition(chess: Chess, depth: number = 1): number {
@@ -118,15 +147,18 @@ export class ChessAI {
       }
     }
 
-    // Mobility and tactical bonuses for intermediate and advanced
-    if (this.difficulty !== 'beginner') {
-      const moves = chess.moves();
-      score += moves.length * 5; // Mobility bonus
-      
-      // Check for tactical threats
-      if (chess.inCheck()) {
-        score += chess.turn() === 'w' ? -50 : 50;
-      }
+    // Basic tactical awareness for all levels
+    const moves = chess.moves();
+    score += moves.length * (this.difficulty === 'beginner' ? 2 : 5); // Mobility bonus
+    
+    // Check for tactical threats
+    if (chess.inCheck()) {
+      score += chess.turn() === 'w' ? -50 : 50;
+    }
+    
+    // Encourage development and basic principles for beginners
+    if (this.difficulty === 'beginner') {
+      score += this.getBeginnerBonus(chess);
     }
 
     // Simple recursion for higher difficulties
@@ -150,6 +182,37 @@ export class ChessAI {
     }
 
     return chess.turn() === 'w' ? score : -score;
+  }
+
+  private getBeginnerBonus(chess: Chess): number {
+    let bonus = 0;
+    const board = chess.board();
+    
+    // Encourage piece development
+    let developedPieces = 0;
+    
+    // Count developed minor pieces
+    for (let rank = 0; rank < 8; rank++) {
+      for (let file = 0; file < 8; file++) {
+        const piece = board[rank][file];
+        if (piece && (piece.type === 'n' || piece.type === 'b')) {
+          // Check if piece has moved from starting position
+          const isWhite = piece.color === 'w';
+          const startingRank = isWhite ? 7 : 0;
+          
+          if (rank !== startingRank) {
+            developedPieces++;
+          }
+        }
+      }
+    }
+    
+    bonus += developedPieces * 15; // Reward development
+    
+    // Discourage moving the same piece multiple times in opening
+    // This is a simplified heuristic
+    
+    return bonus;
   }
 
   private getPositionalBonus(piece: any, rank: number, file: number): number {
