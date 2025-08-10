@@ -114,9 +114,12 @@ export default function OnboardingPage() {
 
     // Make the move on the board
     try {
-      const move = game.move({ from, to });
+      const newGame = new Chess(game.fen());
+      const move = newGame.move({ from, to });
       if (move) {
-        setGame(new Chess(game.fen()));
+        setGame(newGame);
+      } else {
+        return false; // Invalid move
       }
     } catch (error) {
       return false; // Invalid move
@@ -132,15 +135,24 @@ export default function OnboardingPage() {
     recordAttemptMutation.mutate(attemptData);
     setAttempts(prev => [...prev, { puzzleId: currentPuzzle.id, solved, timeSpent }]);
 
-    if (solved || moveIndex >= solution.length - 1) {
-      // Puzzle completed
+    if (solved) {
+      toast({
+        title: 'Correct!',
+        description: 'Well done! Moving to next puzzle.',
+      });
       setTimeout(() => {
         if (currentPuzzleIndex < puzzles.length - 1) {
           setCurrentPuzzleIndex(prev => prev + 1);
         } else {
           completeOnboardingMutation.mutate();
         }
-      }, 2000);
+      }, 1500);
+    } else {
+      toast({
+        title: 'Not quite right',
+        description: 'Try again or use the Show Solution button.',
+        variant: 'destructive',
+      });
     }
 
     return true;
@@ -155,6 +167,24 @@ export default function OnboardingPage() {
     
     setShowSolution(true);
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+    
+    // Show the first move of the solution
+    const solution = currentPuzzle.solution;
+    if (solution.length > 0) {
+      const firstMove = solution[0];
+      try {
+        const newGame = new Chess(game.fen());
+        newGame.move({ from: firstMove.from, to: firstMove.to });
+        setGame(newGame);
+        
+        toast({
+          title: 'Solution Shown',
+          description: `The correct move was ${firstMove.from} to ${firstMove.to}`,
+        });
+      } catch (error) {
+        console.error('Error showing solution:', error);
+      }
+    }
     
     const attemptData = {
       puzzleId: currentPuzzle.id,
@@ -217,6 +247,11 @@ export default function OnboardingPage() {
                   <div>
                     <CardTitle className="text-lg">Puzzle {currentPuzzleIndex + 1}</CardTitle>
                     <CardDescription>{currentPuzzle.description}</CardDescription>
+                    <div className="mt-2">
+                      <Badge variant={game.turn() === 'w' ? 'default' : 'secondary'}>
+                        {game.turn() === 'w' ? 'White to move' : 'Black to move'}
+                      </Badge>
+                    </div>
                   </div>
                   <Badge variant="secondary">
                     Rating: {currentPuzzle.rating}
