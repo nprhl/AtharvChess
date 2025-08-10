@@ -25,7 +25,6 @@ export default function OnboardingPage() {
   const queryClient = useQueryClient();
   const [currentPuzzleIndex, setCurrentPuzzleIndex] = useState(0);
   const [game, setGame] = useState<Chess>(new Chess());
-  const [attempts, setAttempts] = useState<Array<{ puzzleId: number; solved: boolean; timeSpent: number }>>([]);
   const [startTime, setStartTime] = useState<number>(0);
   const [showSolution, setShowSolution] = useState(false);
 
@@ -82,8 +81,6 @@ export default function OnboardingPage() {
         setGame(newGame);
         setStartTime(Date.now());
         setShowSolution(false);
-        // Reset attempts for the new puzzle
-        setAttempts(prev => prev.filter(a => a.puzzleId !== currentPuzzle.id));
         console.log('Started new puzzle:', currentPuzzle.id, 'Solution:', currentPuzzle.solution);
       } catch (error) {
         console.error('Invalid FEN string for puzzle:', currentPuzzle.id, error);
@@ -100,7 +97,7 @@ export default function OnboardingPage() {
         }
       }
     }
-  }, [currentPuzzle, currentPuzzleIndex, puzzles.length, completeOnboardingMutation, toast]);
+  }, [currentPuzzle?.id]);
 
   const handleMove = (from: Square, to: Square) => {
     if (!currentPuzzle || showSolution) return false;
@@ -110,18 +107,12 @@ export default function OnboardingPage() {
 
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
     const solution = currentPuzzle.solution;
-    const currentAttempts = attempts.filter(a => a.puzzleId === currentPuzzle.id);
-    const moveIndex = currentAttempts.length;
     
-    console.log('Move index:', moveIndex, 'Solution length:', solution.length);
-    
-    let solved = false;
-    if (moveIndex < solution.length) {
-      const expectedMove = solution[moveIndex];
-      console.log('Expected move:', expectedMove);
-      solved = expectedMove.from === from && expectedMove.to === to;
-      console.log('Is move correct?', solved);
-    }
+    // For simple puzzles, we only check the first move
+    const expectedMove = solution[0];
+    console.log('Expected move:', expectedMove);
+    const solved = expectedMove.from === from && expectedMove.to === to;
+    console.log('Is move correct?', solved);
 
     // Make the move on the board
     try {
@@ -147,7 +138,6 @@ export default function OnboardingPage() {
     };
 
     recordAttemptMutation.mutate(attemptData);
-    setAttempts(prev => [...prev, { puzzleId: currentPuzzle.id, solved, timeSpent }]);
 
     if (solved) {
       toast({
@@ -162,21 +152,11 @@ export default function OnboardingPage() {
         }
       }, 1500);
     } else {
-      // Check if this was the first move of the solution to provide better feedback
-      if (moveIndex === 0 && solution.length > 0) {
-        const expectedMove = solution[0];
-        toast({
-          title: 'Not quite right',
-          description: `Hint: Try moving from ${expectedMove.from} to ${expectedMove.to}`,
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Not quite right',
-          description: 'Try again or use the Show Solution button.',
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Not quite right',
+        description: `Hint: Try moving from ${expectedMove.from} to ${expectedMove.to}`,
+        variant: 'destructive',
+      });
     }
 
     return true;
@@ -187,7 +167,14 @@ export default function OnboardingPage() {
   };
 
   const handleShowSolution = () => {
-    if (!currentPuzzle) return;
+    if (!currentPuzzle || !currentPuzzle.solution || currentPuzzle.solution.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'No solution available for this puzzle',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     console.log('Show solution clicked for puzzle:', currentPuzzle.id);
     console.log('Current solution:', currentPuzzle.solution);
@@ -196,43 +183,47 @@ export default function OnboardingPage() {
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
     
     // Show the first move of the solution
-    const solution = currentPuzzle.solution;
-    if (solution && solution.length > 0) {
-      const firstMove = solution[0];
-      console.log('Attempting to show move:', firstMove);
+    const firstMove = currentPuzzle.solution[0];
+    console.log('Attempting to show move:', firstMove);
+    
+    try {
+      // Reset to original position first
+      const newGame = new Chess(currentPuzzle.fen);
+      const move = newGame.move({ 
+        from: firstMove.from, 
+        to: firstMove.to 
+      });
+      console.log('Move result:', move);
       
-      try {
-        const newGame = new Chess(currentPuzzle.fen); // Reset to original position first
-        const move = newGame.move({ from: firstMove.from, to: firstMove.to });
-        console.log('Move result:', move);
-        
-        if (move) {
+      if (move) {
+        setGame(newGame);
+        toast({
+          title: 'Solution Shown',
+          description: `The correct move is ${firstMove.from} to ${firstMove.to}`,
+        });
+      } else {
+        console.error('Invalid move in solution:', firstMove);
+        // Try with different move format
+        const altMove = newGame.move(firstMove.from + firstMove.to);
+        if (altMove) {
           setGame(newGame);
           toast({
             title: 'Solution Shown',
             description: `The correct move is ${firstMove.from} to ${firstMove.to}`,
           });
         } else {
-          console.error('Invalid move in solution:', firstMove);
           toast({
-            title: 'Error',
+            title: 'Error', 
             description: 'Unable to show solution - invalid move',
             variant: 'destructive',
           });
         }
-      } catch (error) {
-        console.error('Error showing solution:', error);
-        toast({
-          title: 'Error',
-          description: 'Unable to show solution',
-          variant: 'destructive',
-        });
       }
-    } else {
-      console.error('No solution available for puzzle');
+    } catch (error) {
+      console.error('Error showing solution:', error);
       toast({
         title: 'Error',
-        description: 'No solution available for this puzzle',
+        description: 'Unable to show solution',
         variant: 'destructive',
       });
     }
@@ -245,7 +236,6 @@ export default function OnboardingPage() {
     };
 
     recordAttemptMutation.mutate(attemptData);
-    setAttempts(prev => [...prev, { puzzleId: currentPuzzle.id, solved: false, timeSpent }]);
   };
 
   const handleNextPuzzle = () => {
