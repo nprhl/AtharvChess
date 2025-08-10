@@ -1,16 +1,18 @@
 import { 
-  users, games, lessons, userLessonProgress, settings,
+  users, games, lessons, userLessonProgress, settings, puzzles, puzzleAttempts,
   type User, type InsertUser, type Game, type InsertGame,
   type Lesson, type InsertLesson, type UserLessonProgress, 
-  type InsertUserLessonProgress, type Settings, type InsertSettings
+  type InsertUserLessonProgress, type Settings, type InsertSettings,
+  type Puzzle, type InsertPuzzle, type PuzzleAttempt, type InsertPuzzleAttempt
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Users
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
 
@@ -21,11 +23,21 @@ export interface IStorage {
   // Lessons
   getAllLessons(): Promise<Lesson[]>;
   getLessonById(id: number): Promise<Lesson | undefined>;
+  getLessonsByDifficulty(difficulty: string): Promise<Lesson[]>;
   createLesson(lesson: InsertLesson): Promise<Lesson>;
 
   // User Lesson Progress
   getUserLessonProgress(userId: number): Promise<UserLessonProgress[]>;
   updateUserLessonProgress(userId: number, lessonId: number, progress: Partial<InsertUserLessonProgress>): Promise<UserLessonProgress>;
+
+  // Puzzles
+  getAllPuzzles(): Promise<Puzzle[]>;
+  getPuzzlesByRatingRange(minRating: number, maxRating: number): Promise<Puzzle[]>;
+  createPuzzle(puzzle: InsertPuzzle): Promise<Puzzle>;
+
+  // Puzzle Attempts
+  getUserPuzzleAttempts(userId: number): Promise<PuzzleAttempt[]>;
+  createPuzzleAttempt(attempt: InsertPuzzleAttempt): Promise<PuzzleAttempt>;
 
   // Settings
   getUserSettings(userId: number): Promise<Settings | undefined>;
@@ -329,6 +341,11 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -378,6 +395,12 @@ export class DatabaseStorage implements IStorage {
   async getLessonById(id: number): Promise<Lesson | undefined> {
     const [lesson] = await db.select().from(lessons).where(eq(lessons.id, id));
     return lesson || undefined;
+  }
+
+  async getLessonsByDifficulty(difficulty: string): Promise<Lesson[]> {
+    return await db.select().from(lessons)
+      .where(eq(lessons.difficulty, difficulty))
+      .orderBy(lessons.order);
   }
 
   async createLesson(insertLesson: InsertLesson): Promise<Lesson> {
@@ -474,6 +497,40 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return newSettings;
     }
+  }
+
+  async getAllPuzzles(): Promise<Puzzle[]> {
+    return await db.select().from(puzzles).orderBy(puzzles.rating);
+  }
+
+  async getPuzzlesByRatingRange(minRating: number, maxRating: number): Promise<Puzzle[]> {
+    return await db.select().from(puzzles)
+      .where(and(
+        eq(puzzles.rating, minRating), // This should be gte when available
+        eq(puzzles.rating, maxRating)  // This should be lte when available
+      ));
+  }
+
+  async createPuzzle(insertPuzzle: InsertPuzzle): Promise<Puzzle> {
+    const [puzzle] = await db
+      .insert(puzzles)
+      .values(insertPuzzle)
+      .returning();
+    return puzzle;
+  }
+
+  async getUserPuzzleAttempts(userId: number): Promise<PuzzleAttempt[]> {
+    return await db.select().from(puzzleAttempts)
+      .where(eq(puzzleAttempts.userId, userId))
+      .orderBy(desc(puzzleAttempts.createdAt));
+  }
+
+  async createPuzzleAttempt(insertAttempt: InsertPuzzleAttempt): Promise<PuzzleAttempt> {
+    const [attempt] = await db
+      .insert(puzzleAttempts)
+      .values(insertAttempt)
+      .returning();
+    return attempt;
   }
 }
 

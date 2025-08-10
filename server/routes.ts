@@ -1,12 +1,193 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import passport from "passport";
 import { storage } from "./storage";
-import { insertUserSchema, insertGameSchema, insertSettingsSchema } from "@shared/schema";
+import { setupAuth, requireAuth, getCurrentUser, hashPassword } from "./auth";
+import { puzzleService } from "./puzzle-service";
+import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema } from "@shared/schema";
 import { z } from "zod";
 import { ChessAI, type Difficulty } from "./chess-ai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // User routes
+  // Setup authentication
+  setupAuth(app);
+
+  // Authentication routes
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, email, password } = registerSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists with this email" });
+      }
+
+      const existingUsername = await storage.getUserByUsername(username);
+      if (existingUsername) {
+        return res.status(400).json({ message: "Username already taken" });
+      }
+
+      // Hash password and create user
+      const passwordHash = await hashPassword(password);
+      const user = await storage.createUser({
+        username,
+        email,
+        passwordHash,
+        eloRating: 1200,
+        isEloCalibrated: false,
+        gamesWon: 0,
+        puzzlesSolved: 0,
+        currentStreak: 0,
+        lessonsCompleted: 0,
+        onboardingCompleted: false
+      });
+
+      // Log user in
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Login failed after registration" });
+        }
+        res.status(201).json({
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            eloRating: user.eloRating,
+            isEloCalibrated: user.isEloCalibrated,
+            onboardingCompleted: user.onboardingCompleted
+          }
+        });
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid registration data", errors: error.errors });
+      }
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/login", (req, res, next) => {
+    try {
+      loginSchema.parse(req.body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid login data", errors: error.errors });
+      }
+    }
+
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Internal server error" });
+      }
+      if (!user) {
+        return res.status(401).json({ message: info.message || "Invalid credentials" });
+      }
+
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Login failed" });
+        }
+        res.json({
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            eloRating: user.eloRating,
+            isEloCalibrated: user.isEloCalibrated,
+            onboardingCompleted: user.onboardingCompleted
+          }
+        });
+      });
+    })(req, res, next);
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  app.get("/api/auth/me", getCurrentUser, async (req, res) => {
+    if (req.user) {
+      const user = req.user as any;
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          eloRating: user.eloRating,
+          isEloCalibrated: user.isEloCalibrated,
+          onboardingCompleted: user.onboardingCompleted
+        }
+      });
+    } else {
+      res.status(401).json({ message: "Not authenticated" });
+    }
+  });
+
+  // ELO Assessment & Onboarding routes
+  app.get("/api/onboarding/puzzles", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const puzzles = await puzzleService.getAssessmentPuzzles(user.eloRating);
+      res.json(puzzles);
+    } catch (error) {
+      console.error("Error getting assessment puzzles:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/onboarding/puzzle-attempt", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { puzzleId, solved, timeSpent, attemptedMoves } = req.body;
+      
+      const result = await puzzleService.recordPuzzleAttempt(
+        user.id,
+        puzzleId,
+        solved,
+        timeSpent,
+        attemptedMoves
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error recording puzzle attempt:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/onboarding/complete", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      
+      // Mark onboarding as completed
+      await storage.updateUser(user.id, { onboardingCompleted: true });
+      
+      // Get recommended lessons based on final ELO
+      const updatedUser = await storage.getUser(user.id);
+      const recommendedLessons = await puzzleService.getRecommendedLessons(
+        user.id, 
+        updatedUser?.eloRating || 1200
+      );
+
+      res.json({
+        message: "Onboarding completed",
+        user: updatedUser,
+        recommendedLessons
+      });
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Protected user routes
   app.get("/api/user/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
