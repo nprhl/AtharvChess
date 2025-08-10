@@ -95,6 +95,16 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 
 ## Recent Changes
 
+- **August 10, 2025**: Enhanced AI difficulty system
+  - Fixed hardcoded 'beginner' difficulty in hint function to use user-selected difficulty
+  - Completely redesigned ChessAI with distinct difficulty behaviors:
+    - Beginner: 80% random moves with high scoring variation for learning
+    - Intermediate: 30% random moves with medium scoring variation for challenge
+    - Advanced: Pure calculation with positional analysis and deeper search
+  - Added search depth scaling (1-3 ply) based on difficulty level
+  - Implemented positional evaluation bonuses for advanced level
+  - Added tactical awareness (check detection, mobility bonuses) for intermediate/advanced
+
 - **August 9, 2025**: Added PostgreSQL database integration with Neon
   - Replaced in-memory storage (MemStorage) with database storage (DatabaseStorage)
   - Created database schema with tables: users, games, lessons, user_lesson_progress, settings
