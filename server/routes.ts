@@ -166,20 +166,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user as any;
       
-      // Mark onboarding as completed
-      await storage.updateUser(user.id, { onboardingCompleted: true });
+      // Calculate final ELO based on all puzzle attempts
+      const assessmentResult = await puzzleService.calculateAssessmentElo(user.id);
       
-      // Get recommended lessons based on final ELO
+      // Update user with calculated ELO and mark onboarding as completed
+      await storage.updateUser(user.id, { 
+        eloRating: assessmentResult.estimatedElo,
+        onboardingCompleted: true 
+      });
+      
+      // Get the updated user data
       const updatedUser = await storage.getUser(user.id);
       const recommendedLessons = await puzzleService.getRecommendedLessons(
         user.id, 
-        updatedUser?.eloRating || 1200
+        assessmentResult.estimatedElo
       );
 
       res.json({
         message: "Onboarding completed",
         user: updatedUser,
-        recommendedLessons
+        recommendedLessons,
+        assessment: assessmentResult
       });
     } catch (error) {
       console.error("Error completing onboarding:", error);

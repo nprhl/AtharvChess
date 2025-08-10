@@ -188,6 +188,16 @@ export class PuzzleService {
     return recommendedLessons;
   }
 
+  // Calculate final assessment ELO based on all user's puzzle attempts
+  async calculateAssessmentElo(userId: number): Promise<EloAssessmentResult> {
+    const allAttempts = await storage.getUserPuzzleAttempts(userId);
+    const allPuzzles = await storage.getAllPuzzles();
+    
+    console.log(`Calculating ELO for user ${userId} with ${allAttempts.length} attempts`);
+    
+    return this.calculateEloFromPuzzles(allAttempts, allPuzzles);
+  }
+
   // Record puzzle attempt and update user ELO if needed
   async recordPuzzleAttempt(
     userId: number, 
