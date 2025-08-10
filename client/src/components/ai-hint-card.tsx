@@ -5,9 +5,10 @@ import { Lightbulb, X } from "lucide-react";
 interface AIHintCardProps {
   hint: string;
   onClose: () => void;
+  onShowMove: () => void;
 }
 
-export default function AIHintCard({ hint, onClose }: AIHintCardProps) {
+export default function AIHintCard({ hint, onClose, onShowMove }: AIHintCardProps) {
   return (
     <Card className="bg-gradient-to-r from-purple-600 to-blue-600 border-none">
       <CardContent className="p-4">
@@ -34,6 +35,7 @@ export default function AIHintCard({ hint, onClose }: AIHintCardProps) {
               size="sm"
               className="text-xs bg-white/20 hover:bg-white/30 text-white border-none"
               variant="outline"
+              onClick={onShowMove}
             >
               Show me
             </Button>

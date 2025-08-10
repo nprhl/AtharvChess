@@ -52,6 +52,7 @@ export default function GamePage() {
   
   const [showHint, setShowHint] = useState(false);
   const [currentHint, setCurrentHint] = useState<string | null>(null);
+  const [suggestedMove, setSuggestedMove] = useState<{from: string, to: string, promotion?: string | null} | null>(null);
 
   const handleGetHint = async () => {
     try {
@@ -67,6 +68,7 @@ export default function GamePage() {
       if (response.ok) {
         const data = await response.json();
         setCurrentHint(data.hint);
+        setSuggestedMove(data.move);
         setShowHint(true);
       }
     } catch (error) {
@@ -74,10 +76,23 @@ export default function GamePage() {
     }
   };
 
+  const handleShowMove = () => {
+    if (suggestedMove) {
+      // Make the suggested move
+      const success = makeMove(suggestedMove.from as any, suggestedMove.to as any, suggestedMove.promotion || undefined);
+      if (success) {
+        setShowHint(false);
+        setCurrentHint(null);
+        setSuggestedMove(null);
+      }
+    }
+  };
+
   const handleNewGame = () => {
     resetGame();
     setShowHint(false);
     setCurrentHint(null);
+    setSuggestedMove(null);
   };
 
   const isGameInProgress = moveHistory.length > 0 && !isGameOver();
@@ -122,7 +137,12 @@ export default function GamePage() {
         {showHint && currentHint && (
           <AIHintCard 
             hint={currentHint}
-            onClose={() => setShowHint(false)}
+            onClose={() => {
+              setShowHint(false);
+              setCurrentHint(null);
+              setSuggestedMove(null);
+            }}
+            onShowMove={handleShowMove}
           />
         )}
 
