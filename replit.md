@@ -95,6 +95,18 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 
 ## Recent Changes
 
+- **August 10, 2025**: Comprehensive Authentication and Onboarding System
+  - Implemented full user authentication with Passport.js and bcrypt password hashing
+  - Added PostgreSQL database schema for users, sessions, puzzles, and puzzle attempts
+  - Created login and registration pages with form validation using React Hook Form and Zod
+  - Built ELO rating assessment system through chess puzzle solving
+  - Developed personalized onboarding workflow for new users
+  - Added automatic learning module recommendations based on assessed skill level
+  - Enhanced database schema with authentication tables (sessions, puzzles, puzzle_attempts)
+  - Integrated puzzle service for ELO calculation and lesson recommendations
+  - Created authentication middleware and protected routes
+  - Updated App routing to handle authentication states and onboarding flow
+
 - **August 10, 2025**: Enhanced AI difficulty system
   - Fixed hardcoded 'beginner' difficulty in hint function to use user-selected difficulty
   - Completely redesigned ChessAI with distinct difficulty behaviors:
