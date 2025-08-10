@@ -115,14 +115,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/me", getCurrentUser, async (req, res) => {
     if (req.user) {
       const user = req.user as any;
+      // Get fresh user data from database to ensure ELO is current
+      const dbUser = await storage.getUser(user.id);
+      
       res.json({
         user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          eloRating: user.eloRating,
-          isEloCalibrated: user.isEloCalibrated,
-          onboardingCompleted: user.onboardingCompleted
+          id: dbUser?.id || user.id,
+          username: dbUser?.username || user.username,
+          email: dbUser?.email || user.email,
+          eloRating: dbUser?.eloRating || user.eloRating,
+          isEloCalibrated: dbUser?.isEloCalibrated || user.isEloCalibrated,
+          onboardingCompleted: dbUser?.onboardingCompleted || user.onboardingCompleted
         }
       });
     } else {
