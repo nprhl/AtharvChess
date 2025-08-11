@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, primaryKey } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -74,6 +74,19 @@ export const puzzleAttempts = pgTable("puzzle_attempts", {
   attemptedMoves: jsonb("attempted_moves"), // Array of moves user tried
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// Engine evaluations for progress analytics
+export const engineEvals = pgTable("engine_evals", {
+  fen: text("fen").notNull(),
+  depth: integer("depth").notNull(),
+  engine: text("engine").notNull(),
+  scoreCp: integer("score_cp"),
+  bestmove: text("bestmove"),
+  pv: text("pv"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.fen, table.depth, table.engine] }),
+}));
 
 // Game analysis and learning patterns
 export const gameAnalysis = pgTable("game_analysis", {
@@ -152,6 +165,10 @@ export const insertPuzzleSchema = createInsertSchema(puzzles).omit({
 
 export const insertPuzzleAttemptSchema = createInsertSchema(puzzleAttempts).omit({
   id: true,
+  createdAt: true,
+});
+
+export const insertEngineEvalSchema = createInsertSchema(engineEvals).omit({
   createdAt: true,
 });
 

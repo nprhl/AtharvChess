@@ -5,6 +5,32 @@ import { Badge } from './ui/badge';
 import { Cpu, Zap, Clock, AlertTriangle } from 'lucide-react';
 import { parseCp } from '../engines/parseUci';
 
+// Function to save evaluation to database
+async function saveEvaluation(fen: string, depth: number, scoreCp: number, bestmove: string, pv?: string) {
+  try {
+    const response = await fetch('/api/evals', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fen,
+        depth,
+        engine: 'stockfish',
+        scoreCp,
+        bestmove,
+        pv
+      })
+    });
+    
+    if (!response.ok) {
+      console.error('Failed to save evaluation:', await response.text());
+    }
+  } catch (error) {
+    console.error('Error saving evaluation:', error);
+  }
+}
+
 interface AnalysisPanelProps {
   fen: string;
   isVisible?: boolean;
@@ -18,6 +44,7 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
   const [analyzing, setAnalyzing] = useState(false);
   const [cp, setCp] = useState<number | null>(null);
   const [blunder, setBlunder] = useState<string | null>(null);
+  const [pv, setPv] = useState<string>('');
   const prevFenRef = useRef<string>('');
   const lastCpRef = useRef<number | null>(null);
 
@@ -36,6 +63,7 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
     setBestMove('');
     setEvaluation('');
     setDepth(0);
+    setPv('');
     
     // Clear previous analysis
     clearLines();
@@ -59,9 +87,10 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
         setBestMove(move);
         setAnalyzing(false);
       } else if (line.startsWith('info ')) {
-        // Extract evaluation and depth from info lines
+        // Extract evaluation, depth, and PV from info lines
         const depthMatch = line.match(/depth (\d+)/);
         const scoreMatch = line.match(/score (cp|mate) (-?\d+)/);
+        const pvMatch = line.match(/pv (.+)/);
         
         if (depthMatch) {
           setDepth(parseInt(depthMatch[1]));
@@ -78,11 +107,15 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
             setEvaluation(`M${mateIn}`);
           }
         }
+        
+        if (pvMatch) {
+          setPv(pvMatch[1]);
+        }
       }
     }
   }, [lines]);
 
-  // Separate effect for blunder detection when analysis completes
+  // Separate effect for blunder detection and database saving when analysis completes
   useEffect(() => {
     // Only check for blunders when we have a bestmove (analysis complete)
     const bestMoveLines = lines.filter(line => line.startsWith('bestmove '));
@@ -106,9 +139,14 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
         
         // Update reference for next comparison
         lastCpRef.current = currentCp;
+        
+        // Save evaluation to database when analysis is complete
+        if (bestMove && depth >= 10) {
+          saveEvaluation(fen, depth, currentCp, bestMove, pv);
+        }
       }
     }
-  }, [lines]);
+  }, [lines, bestMove, depth, fen, pv]);
 
   if (!isVisible) return null;
 

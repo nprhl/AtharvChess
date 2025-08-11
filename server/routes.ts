@@ -10,10 +10,16 @@ import { ChessAI, type Difficulty } from "./chess-ai";
 import { OllamaChessAI } from "./ollama-chess-ai";
 import { OpenAIChessAI } from "./openai-chess-ai";
 import { MoveEvaluator } from "./move-evaluator";
+import { evals as evalRoutes } from "./routes/evals";
+import { db } from "./db";
+import { games } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   setupAuth(app);
+  
+  // Mount API routes
+  app.use('/api/evals', evalRoutes);
 
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
