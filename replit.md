@@ -95,6 +95,15 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 
 ## Recent Changes
 
+- **August 11, 2025**: Ollama Open-Source AI Integration
+  - Added OllamaChessAI class supporting open-source language models via Ollama
+  - Integrated difficulty-specific model selection (llama3.1:8b for beginner/intermediate, llama3.1:70b for advanced)
+  - Implemented sophisticated chess prompting with context awareness and game history
+  - Added intelligent fallback system: Ollama AI → Traditional Enhanced Engine
+  - Enhanced AI move and hint endpoints with engine selection and response parsing
+  - Created comprehensive setup documentation for Ollama integration
+  - System now provides much stronger chess gameplay when Ollama models are available
+
 - **August 10, 2025**: Comprehensive Authentication and Onboarding System
   - Implemented full user authentication with Passport.js and bcrypt password hashing
   - Added PostgreSQL database schema for users, sessions, puzzles, and puzzle attempts

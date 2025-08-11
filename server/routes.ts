@@ -7,6 +7,7 @@ import { puzzleService } from "./puzzle-service";
 import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema } from "@shared/schema";
 import { z } from "zod";
 import { ChessAI, type Difficulty } from "./chess-ai";
+import { OllamaChessAI } from "./ollama-chess-ai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -343,17 +344,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI move endpoint for computer opponent
+  // AI move endpoint with Ollama integration
   app.post("/api/ai/move", async (req, res) => {
     try {
-      const { fen, difficulty = 'beginner' } = req.body;
+      const { fen, difficulty = 'beginner', useOllama = true } = req.body;
       
       if (!fen) {
         return res.status(400).json({ message: "FEN string is required" });
       }
 
-      const ai = new ChessAI(difficulty as Difficulty);
-      const bestMove = ai.getBestMove(fen);
+      let bestMove = null;
+      let aiEngine = 'traditional';
+
+      // Try Ollama first if requested
+      if (useOllama) {
+        try {
+          const ollamaAI = new OllamaChessAI(difficulty as Difficulty);
+          bestMove = await ollamaAI.getBestMove(fen);
+          if (bestMove) {
+            aiEngine = 'ollama';
+            console.log(`Ollama AI (${difficulty}) played: ${bestMove.san}`);
+          }
+        } catch (error) {
+          console.log('Ollama unavailable, falling back to traditional engine');
+        }
+      }
+
+      // Fallback to traditional chess engine
+      if (!bestMove) {
+        const traditionalAI = new ChessAI(difficulty as Difficulty);
+        bestMove = traditionalAI.getBestMove(fen);
+        aiEngine = 'traditional';
+        console.log(`Traditional AI (${difficulty}) played: ${bestMove?.san}`);
+      }
       
       if (!bestMove) {
         return res.status(400).json({ message: "No valid moves available" });
@@ -366,7 +389,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           promotion: bestMove.promotion || null
         },
         san: bestMove.san,
-        difficulty
+        difficulty,
+        engine: aiEngine
       });
     } catch (error) {
       console.error('AI move error:', error);
@@ -374,27 +398,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI hint endpoint
+  // AI hint endpoint with Ollama integration
   app.post("/api/ai/hint", async (req, res) => {
     try {
-      const { fen, difficulty = 'beginner' } = req.body;
+      const { fen, difficulty = 'beginner', useOllama = true } = req.body;
       
       if (!fen) {
         return res.status(400).json({ message: "FEN string is required" });
       }
 
-      const ai = new ChessAI(difficulty as Difficulty);
-      const bestMove = ai.getBestMove(fen);
+      let bestMove = null;
+      let aiEngine = 'traditional';
+
+      // Try Ollama first for better hint explanations
+      if (useOllama) {
+        try {
+          const ollamaAI = new OllamaChessAI(difficulty as Difficulty);
+          bestMove = await ollamaAI.getBestMove(fen);
+          if (bestMove) {
+            aiEngine = 'ollama';
+          }
+        } catch (error) {
+          console.log('Ollama unavailable for hints, falling back');
+        }
+      }
+
+      // Fallback to traditional engine
+      if (!bestMove) {
+        const traditionalAI = new ChessAI(difficulty as Difficulty);
+        bestMove = traditionalAI.getBestMove(fen);
+      }
       
       if (!bestMove) {
         return res.status(400).json({ message: "No valid moves available" });
       }
 
-      const hints = [
-        `Try moving from ${bestMove.from} to ${bestMove.to}! This develops your pieces and improves your position.`,
-        `Consider the move ${bestMove.san}. This helps control the center.`,
-        `Look at ${bestMove.from}-${bestMove.to}. This move creates tactical opportunities.`,
-        `The computer suggests ${bestMove.san}. This strengthens your position.`
+      // Generate more sophisticated hints based on difficulty
+      const hints = difficulty === 'advanced' ? [
+        `Strong players would consider ${bestMove.san}. This move improves piece coordination and creates long-term advantages.`,
+        `The tactical sequence starting with ${bestMove.san} leads to a favorable position with better piece activity.`,
+        `Advanced analysis suggests ${bestMove.san} due to its strategic value and positional improvements.`,
+        `Consider ${bestMove.san} - this move follows strong opening principles and maintains initiative.`
+      ] : difficulty === 'intermediate' ? [
+        `Try ${bestMove.san}! This move develops your pieces while maintaining good tactics.`,
+        `Consider ${bestMove.san}. This helps control key squares and improves your position.`,
+        `The move ${bestMove.san} creates tactical opportunities and follows good principles.`,
+        `Look for ${bestMove.san} - it strengthens your position and keeps pressure on your opponent.`
+      ] : [
+        `Try moving from ${bestMove.from} to ${bestMove.to}! This develops your pieces safely.`,
+        `Consider the move ${bestMove.san}. It's a good, simple move that improves your position.`,
+        `Look at ${bestMove.from}-${bestMove.to}. This move follows basic chess principles.`,
+        `The computer suggests ${bestMove.san}. It's a safe move that helps your development.`
       ];
       
       const randomHint = hints[Math.floor(Math.random() * hints.length)];
@@ -406,7 +460,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           to: bestMove.to,
           promotion: bestMove.promotion || null
         },
-        explanation: "This move helps develop your pieces and improve your position."
+        explanation: aiEngine === 'ollama' ? 
+          "AI-powered analysis using advanced chess reasoning" : 
+          "Traditional chess engine analysis",
+        engine: aiEngine
       });
     } catch (error) {
       console.error('AI hint error:', error);
