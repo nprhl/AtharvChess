@@ -2,6 +2,8 @@ import { useState } from "react";
 import ChessBoard from "@/components/chess-board";
 import AIHintCard from "@/components/ai-hint-card";
 import MoveEvaluationDisplay from "@/components/move-evaluation";
+import PromotionDialog from "@/components/promotion-dialog";
+import GameSettingsDialog from "@/components/game-settings-dialog";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,7 @@ import {
 import { Undo, HelpCircle, RotateCcw } from "lucide-react";
 
 export default function GamePage() {
-  const [settings] = useLocalStorage('chess-settings', {
+  const [settings, setSettings] = useLocalStorage('chess-settings', {
     hintsEnabled: true,
     focusMode: false,
     progressTracking: true,
@@ -28,7 +30,8 @@ export default function GamePage() {
     difficulty: 'beginner',
     autoAdjustDifficulty: true,
     gameMode: 'pvc' as 'pvp' | 'pvc',
-    aiDifficulty: 'beginner' as 'beginner' | 'intermediate' | 'advanced'
+    aiDifficulty: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
+    playerColor: 'w' as 'w' | 'b'
   });
 
   const { 
@@ -47,11 +50,14 @@ export default function GamePage() {
     playerColor,
     lastMoveEvaluation,
     showEvaluation,
-    dismissEvaluation
+    dismissEvaluation,
+    promotionPending,
+    handlePromotion,
+    cancelPromotion
   } = useChessGame({ 
     gameMode: settings.gameMode,
     difficulty: settings.aiDifficulty,
-    playerColor: 'w'
+    playerColor: settings.playerColor
   });
   
   const [showHint, setShowHint] = useState(false);
@@ -98,6 +104,17 @@ export default function GamePage() {
     setShowHint(false);
     setCurrentHint(null);
     setSuggestedMove(null);
+  };
+
+  const handleSettingsChange = (newSettings: {
+    gameMode: 'pvp' | 'pvc';
+    aiDifficulty: 'beginner' | 'intermediate' | 'advanced';
+    playerColor: 'w' | 'b';
+  }) => {
+    setSettings({
+      ...settings,
+      ...newSettings
+    });
   };
 
   const isGameInProgress = moveHistory.length > 0 && !isGameOver();
@@ -153,6 +170,16 @@ export default function GamePage() {
 
         {/* Game Controls */}
         <div className="flex space-x-2">
+          <GameSettingsDialog
+            currentSettings={{
+              gameMode: settings.gameMode,
+              aiDifficulty: settings.aiDifficulty,
+              playerColor: settings.playerColor
+            }}
+            onSettingsChange={handleSettingsChange}
+            onNewGame={handleNewGame}
+          />
+          
           <Button 
             variant="secondary" 
             className="flex-1 bg-card border-border hover:bg-accent text-card-foreground"
@@ -237,6 +264,13 @@ export default function GamePage() {
         moveSan={lastMoveEvaluation?.moveSan || ""}
         onDismiss={dismissEvaluation}
         isVisible={showEvaluation}
+      />
+
+      {/* Pawn Promotion Dialog */}
+      <PromotionDialog
+        open={!!promotionPending}
+        onPromotion={handlePromotion}
+        playerColor={playerColor}
       />
     </section>
   );

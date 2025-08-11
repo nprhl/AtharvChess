@@ -36,6 +36,10 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     moveSan: string;
   } | null>(null);
   const [showEvaluation, setShowEvaluation] = useState(false);
+  const [promotionPending, setPromotionPending] = useState<{
+    from: Square;
+    to: Square;
+  } | null>(null);
 
   // Force re-render when game state changes
   const triggerUpdate = useCallback(() => {
@@ -156,6 +160,13 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       }
     }
 
+    // Check if this is a pawn promotion move
+    if (!promotion && gameEngine.isPawnPromotion(from, to)) {
+      // Store the move for after promotion is selected
+      setPromotionPending({ from, to });
+      return false; // Don't make the move yet, wait for promotion choice
+    }
+
     // Capture FEN before the move for evaluation
     const fenBefore = gameEngine.fen();
     const success = gameEngine.makeMove(from, to, promotion);
@@ -166,6 +177,9 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       
       triggerUpdate();
       saveGameState();
+      
+      // Clear any pending promotion
+      setPromotionPending(null);
       
       // Evaluate the player's move with AI feedback
       if (lastMove && lastMove.san) {
@@ -183,6 +197,16 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     }
     return success;
   }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentPlayerColor, isComputerThinking, makeComputerMove, evaluatePlayerMove]);
+
+  const handlePromotion = useCallback((piece: 'q' | 'r' | 'b' | 'n') => {
+    if (promotionPending) {
+      makeMove(promotionPending.from, promotionPending.to, piece);
+    }
+  }, [promotionPending, makeMove]);
+
+  const cancelPromotion = useCallback(() => {
+    setPromotionPending(null);
+  }, []);
 
   const undoMove = useCallback((): Move | null => {
     const undone = gameEngine.undoMove();
@@ -224,18 +248,17 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     isCheck: gameEngine.isCheck.bind(gameEngine),
     isCheckmate: gameEngine.isCheckmate.bind(gameEngine),
     isDraw: gameEngine.isDraw.bind(gameEngine),
+    fen: gameEngine.fen.bind(gameEngine),
     turn: gameEngine.turn,
     moveHistory: gameEngine.history,
-    fen: gameEngine.fen.bind(gameEngine),
-    pgn: gameEngine.pgn.bind(gameEngine),
     isComputerThinking,
     gameMode: currentGameMode,
-    difficulty: currentDifficulty,
     playerColor: currentPlayerColor,
-    // Move evaluation features
-    evaluatePlayerMove,
     lastMoveEvaluation,
     showEvaluation,
-    dismissEvaluation
+    dismissEvaluation,
+    promotionPending,
+    handlePromotion,
+    cancelPromotion
   };
 }

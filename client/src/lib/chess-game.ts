@@ -40,6 +40,24 @@ export class ChessGameEngine {
     }
   }
 
+  // Check if a move would be a pawn promotion
+  isPawnPromotion(from: Square, to: Square): boolean {
+    const piece = this.chess.get(from);
+    if (!piece || piece.type !== 'p') return false;
+    
+    const toRank = parseInt(to[1]);
+    const isWhitePawn = piece.color === 'w' && toRank === 8;
+    const isBlackPawn = piece.color === 'b' && toRank === 1;
+    
+    return isWhitePawn || isBlackPawn;
+  }
+
+  // Check if the move is valid without making it
+  isValidMove(from: Square, to: Square): boolean {
+    const moves = this.chess.moves({ verbose: true });
+    return moves.some(move => move.from === from && move.to === to);
+  }
+
   undoMove(): Move | null {
     const undone = this.chess.undo();
     if (undone) {
