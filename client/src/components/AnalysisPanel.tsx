@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useStockfish } from '../hooks/useStockfish';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { Cpu, Zap, Clock } from 'lucide-react';
+import { Cpu, Zap, Clock, AlertTriangle } from 'lucide-react';
+import { parseCp } from '../engines/parseUci';
 
 interface AnalysisPanelProps {
   fen: string;
@@ -10,28 +11,47 @@ interface AnalysisPanelProps {
 }
 
 export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelProps) {
-  const { send, lines, isReady } = useStockfish();
+  const { send, lines, isReady, clearLines } = useStockfish();
   const [bestMove, setBestMove] = useState<string>('');
   const [evaluation, setEvaluation] = useState<string>('');
   const [depth, setDepth] = useState<number>(0);
   const [analyzing, setAnalyzing] = useState(false);
+  const [cp, setCp] = useState<number | null>(null);
+  const [blunder, setBlunder] = useState<string | null>(null);
+  const prevFenRef = useRef<string>('');
+  const lastCpRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!fen || !isReady) return;
+    
+    // Only analyze if FEN actually changed
+    if (fen === prevFenRef.current) return;
+    
+    // Clear blunder message when analyzing new position
+    if (prevFenRef.current !== '') {
+      setBlunder(null);
+    }
     
     setAnalyzing(true);
     setBestMove('');
     setEvaluation('');
     setDepth(0);
     
+    // Clear previous analysis
+    clearLines();
+    
     // Initialize position and analyze
     send('ucinewgame');
     send('isready');
     send(`position fen ${fen}`);
     send('go depth 10');
-  }, [fen, isReady, send]);
+    
+    prevFenRef.current = fen;
+  }, [fen, isReady, send, clearLines]);
 
   useEffect(() => {
+    if (lines.length === 0) return;
+    
     // Parse engine output
     for (const line of lines) {
       if (line.startsWith('bestmove ')) {
@@ -62,6 +82,34 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
     }
   }, [lines]);
 
+  // Separate effect for blunder detection when analysis completes
+  useEffect(() => {
+    // Only check for blunders when we have a bestmove (analysis complete)
+    const bestMoveLines = lines.filter(line => line.startsWith('bestmove '));
+    if (bestMoveLines.length === 0) return;
+
+    // Get the final evaluation from the latest analysis
+    const latestInfo = [...lines].reverse().find(l => l.startsWith('info ') && l.includes(' score '));
+    if (latestInfo) {
+      const currentCp = parseCp(latestInfo);
+      if (currentCp !== null) {
+        setCp(currentCp);
+        
+        // Check for blunder compared to previous position
+        if (lastCpRef.current !== null) {
+          const swing = currentCp - lastCpRef.current;
+          // Detect blunder (evaluation drop of 150+ centipawns)
+          if (swing < -150) {
+            setBlunder(`Blunder detected (−${Math.abs(swing)} cp).`);
+          }
+        }
+        
+        // Update reference for next comparison
+        lastCpRef.current = currentCp;
+      }
+    }
+  }, [lines]);
+
   if (!isVisible) return null;
 
   return (
@@ -78,6 +126,14 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Blunder Alert */}
+        {blunder && (
+          <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            <span className="text-sm text-destructive font-medium">{blunder}</span>
+          </div>
+        )}
+        
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="space-y-1">
             <div className="text-muted-foreground">Best Move</div>
