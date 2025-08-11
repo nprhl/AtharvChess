@@ -1,65 +1,99 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Puzzle, Flame, CalendarCheck, Crown, Target, BookOpen } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Trophy, Puzzle, Flame, CalendarCheck, Crown, Target, BookOpen, TrendingUp, TrendingDown, Minus, ArrowUp } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ProgressPage() {
-  // For now, we'll use mock data since we don't have user authentication
-  const mockUser = {
-    id: 1,
-    eloRating: 1250,
-    gamesWon: 47,
-    puzzlesSolved: 156,
-    currentStreak: 5,
-    lessonsCompleted: 12
-  };
+  const { user, isAuthenticated, isLoading } = useAuth();
+  
+  const { data: progressData, isLoading: progressLoading } = useQuery({
+    queryKey: ["/api/user/progress"],
+    enabled: isAuthenticated && !!user,
+    retry: false,
+  });
 
-  const mockRecentActivity = [
-    {
-      id: 1,
-      type: 'game_won',
-      description: 'Won game vs. Alex',
-      timestamp: '2 hours ago',
-      detail: '+12 Elo',
-      icon: Trophy,
-      color: 'emerald'
-    },
-    {
-      id: 2,
-      type: 'puzzles',
-      description: 'Completed 5 puzzles',
-      timestamp: 'Yesterday',
-      detail: '95% accuracy',
-      icon: Puzzle,
-      color: 'purple'
-    },
-    {
-      id: 3,
-      type: 'lesson',
-      description: 'Finished Knight Moves lesson',
-      timestamp: '2 days ago',
-      detail: '88% score',
-      icon: BookOpen,
-      color: 'blue'
-    }
-  ];
+  if (isLoading || progressLoading) {
+    return (
+      <section className="p-4 space-y-4">
+        <h2 className="text-xl font-bold text-foreground">Your Progress</h2>
+        <div className="space-y-4">
+          <Skeleton className="h-24 w-full" />
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </div>
+      </section>
+    );
+  }
 
-  const getEloProgress = (rating: number) => {
-    const minRating = 1000;
-    const maxRating = 2000;
-    const progress = ((rating - minRating) / (maxRating - minRating)) * 100;
+  if (!isAuthenticated) {
+    return (
+      <section className="p-4 space-y-4">
+        <h2 className="text-xl font-bold text-foreground">Your Progress</h2>
+        <Card className="bg-card border-border">
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground mb-4">Please log in to view your progress</p>
+            <a href="/api/login" className="text-blue-600 hover:underline">
+              Sign In
+            </a>
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
+
+  if (!progressData) {
+    return (
+      <section className="p-4 space-y-4">
+        <h2 className="text-xl font-bold text-foreground">Your Progress</h2>
+        <Card className="bg-card border-border">
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground">Unable to load progress data</p>
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
+
+  const getEloProgress = (rating: number, target: number) => {
+    const range = target - Math.max(600, target - 400); // Dynamic range based on target
+    const progress = ((rating - (target - 400)) / range) * 100;
     return Math.min(Math.max(progress, 0), 100);
   };
 
   const getPlayerLevel = (rating: number) => {
-    if (rating < 1200) return 'Beginner';
-    if (rating < 1500) return 'Intermediate';
-    if (rating < 1800) return 'Advanced';
-    return 'Expert';
+    if (rating < 1000) return 'Beginner';
+    if (rating < 1200) return 'Novice';
+    if (rating < 1400) return 'Intermediate';
+    if (rating < 1600) return 'Advanced';
+    if (rating < 1800) return 'Expert';
+    if (rating < 2000) return 'Master';
+    return 'Grandmaster';
   };
 
-  const eloProgress = getEloProgress(mockUser.eloRating);
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'improving': return TrendingUp;
+      case 'declining': return TrendingDown;
+      default: return Minus;
+    }
+  };
+
+  const getTrendColor = (trend: string) => {
+    switch (trend) {
+      case 'improving': return 'text-green-500';
+      case 'declining': return 'text-red-500';
+      default: return 'text-gray-500';
+    }
+  };
+
+  const eloProgress = getEloProgress(progressData.currentElo, progressData.nextEloTarget);
 
   return (
     <section className="p-4 space-y-4">
@@ -69,10 +103,23 @@ export default function ProgressPage() {
       <Card className="bg-gradient-to-r from-blue-600 to-purple-600 border-none">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <p className="text-blue-100 text-sm">Current Rating</p>
-              <p className="text-2xl font-bold text-white">{mockUser.eloRating}</p>
-              <p className="text-blue-200 text-xs">{getPlayerLevel(mockUser.eloRating)} Player</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold text-white">{progressData.currentElo}</p>
+                {progressData.eloChange !== 0 && (
+                  <Badge 
+                    variant={progressData.eloChange > 0 ? "default" : "destructive"}
+                    className="text-xs"
+                  >
+                    {progressData.eloChange > 0 ? '+' : ''}{progressData.eloChange}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-blue-200 text-xs">{getPlayerLevel(progressData.currentElo)} Player</p>
+              <p className="text-blue-300 text-xs mt-1">
+                Target: {progressData.nextEloTarget} ({progressData.estimatedGamesToTarget} games)
+              </p>
             </div>
             <div className="w-16 h-16 relative">
               <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
@@ -110,74 +157,160 @@ export default function ProgressPage() {
           <CardContent className="p-3">
             <div className="flex items-center space-x-2 mb-2">
               <Trophy className="w-4 h-4 text-yellow-400" />
-              <p className="text-xs text-muted-foreground">Games Won</p>
+              <p className="text-xs text-muted-foreground">Games Played</p>
             </div>
-            <p className="text-xl font-bold text-card-foreground">{mockUser.gamesWon}</p>
+            <p className="text-xl font-bold text-card-foreground">{progressData.gamesPlayed}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <div className="flex items-center space-x-2 mb-2">
-              <Puzzle className="w-4 h-4 text-purple-400" />
-              <p className="text-xs text-muted-foreground">Puzzles Solved</p>
+              <Target className="w-4 h-4 text-green-400" />
+              <p className="text-xs text-muted-foreground">Win Rate</p>
             </div>
-            <p className="text-xl font-bold text-card-foreground">{mockUser.puzzlesSolved}</p>
+            <p className="text-xl font-bold text-card-foreground">{progressData.winRate}%</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <div className="flex items-center space-x-2 mb-2">
-              <Flame className="w-4 h-4 text-red-400" />
-              <p className="text-xs text-muted-foreground">Current Streak</p>
+              <BookOpen className="w-4 h-4 text-blue-400" />
+              <p className="text-xs text-muted-foreground">Skill Areas</p>
             </div>
-            <p className="text-xl font-bold text-card-foreground">{mockUser.currentStreak}</p>
+            <p className="text-xl font-bold text-card-foreground">{progressData.skillAreas.length}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <div className="flex items-center space-x-2 mb-2">
-              <CalendarCheck className="w-4 h-4 text-emerald-400" />
-              <p className="text-xs text-muted-foreground">Lessons</p>
+              <Flame className="w-4 h-4 text-orange-400" />
+              <p className="text-xs text-muted-foreground">Improvements</p>
             </div>
-            <p className="text-xl font-bold text-card-foreground">{mockUser.lessonsCompleted}</p>
+            <p className="text-xl font-bold text-card-foreground">{progressData.recommendations.length}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Activity */}
+      {/* Skill Areas Progress */}
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Recent Activity
+          Skill Areas
         </h3>
         
-        {mockRecentActivity.map((activity) => {
-          const IconComponent = activity.icon;
-          const colorClasses = {
-            emerald: 'bg-emerald-500',
-            purple: 'bg-purple-500',
-            blue: 'bg-blue-500'
-          };
-
+        {progressData.skillAreas.map((skill, index) => {
+          const TrendIcon = getTrendIcon(skill.trend);
+          
           return (
-            <Card key={activity.id} className="bg-card border-border">
-              <CardContent className="p-3 flex items-center space-x-3">
-                <div className={`w-8 h-8 ${colorClasses[activity.color as keyof typeof colorClasses]} rounded-full flex items-center justify-center`}>
-                  <IconComponent className="w-4 h-4 text-white" />
+            <Card key={index} className="bg-card border-border">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold capitalize text-card-foreground">
+                    {skill.area}
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      Level {skill.currentLevel}/10
+                    </span>
+                    <TrendIcon className={`w-3 h-3 ${getTrendColor(skill.trend)}`} />
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-card-foreground">{activity.description}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {activity.timestamp} • {activity.detail}
-                  </p>
+                <Progress value={skill.currentLevel * 10} className="h-2 mb-2" />
+                <p className="text-xs text-muted-foreground mb-1">
+                  {skill.description}
+                </p>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Practice: {skill.practiceCount} times</span>
+                  <span>Success: {skill.successRate}%</span>
                 </div>
               </CardContent>
             </Card>
           );
         })}
       </div>
+
+      {/* Improvement Recommendations */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Recommended Improvements
+        </h3>
+        
+        {progressData.recommendations.map((rec, index) => {
+          const priorityColors = {
+            high: 'bg-red-500',
+            medium: 'bg-yellow-500',
+            low: 'bg-green-500'
+          };
+
+          return (
+            <Card key={index} className="bg-card border-border">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className={`w-2 h-2 rounded-full mt-2 ${priorityColors[rec.priority]}`} />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="text-sm font-semibold capitalize text-card-foreground">
+                        {rec.area}
+                      </h4>
+                      <Badge variant="outline" className="text-xs">
+                        +{rec.estimatedEloGain} ELO
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {rec.description}
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      {rec.actionItems.map((item, i) => (
+                        <li key={i} className="flex items-start gap-1">
+                          <span className="w-1 h-1 bg-muted-foreground rounded-full mt-1.5 flex-shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Recent Games */}
+      {progressData.recentPerformance.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Recent Games
+          </h3>
+          
+          {progressData.recentPerformance.map((game, index) => {
+            const resultColors = {
+              win: 'bg-green-500',
+              loss: 'bg-red-500',
+              draw: 'bg-gray-500'
+            };
+
+            return (
+              <Card key={index} className="bg-card border-border">
+                <CardContent className="p-3 flex items-center space-x-3">
+                  <div className={`w-8 h-8 ${resultColors[game.result]} rounded-full flex items-center justify-center`}>
+                    <Trophy className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-card-foreground">
+                      {game.result.charAt(0).toUpperCase() + game.result.slice(1)} vs {game.opponent}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {game.date} • {game.eloChange > 0 ? '+' : ''}{game.eloChange} ELO • {game.movesPlayed} moves
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

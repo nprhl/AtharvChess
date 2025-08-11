@@ -529,7 +529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       // Store move for learning analysis if user is authenticated
-      if (userId && evaluation.moveType === 'blunder' || evaluation.moveType === 'mistake') {
+      if (userId && (evaluation.moveType === 'blunder' || evaluation.moveType === 'mistake')) {
         try {
           const { lessonGenerator } = await import("./lesson-generator");
           // This could trigger lesson generation based on patterns
@@ -556,6 +556,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rating: 5
         }
       });
+    }
+  });
+
+  // User progress endpoint
+  app.get("/api/user/progress", async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      console.log(`Getting progress data for user ${userId}`);
+      
+      const { progressAnalyzer } = await import("./progress-analyzer");
+      const progressData = await progressAnalyzer.getUserProgress(userId);
+      
+      res.json(progressData);
+    } catch (error) {
+      console.error("Error fetching user progress:", error);
+      res.status(500).json({ message: "Failed to fetch progress data" });
+    }
+  });
+
+  // Store game result for progress tracking
+  app.post("/api/game/complete", async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { result, moves, opponent = "Computer", eloChange = 0 } = req.body;
+
+      if (!result || !moves) {
+        return res.status(400).json({ message: "Result and moves are required" });
+      }
+
+      console.log(`Storing game result for user ${userId}: ${result}`);
+
+      // Store game in database
+      const [game] = await db.insert(games).values({
+        userId,
+        opponent,
+        result,
+        moves,
+        eloChange
+      }).returning();
+
+      // Trigger learning analysis
+      try {
+        const { lessonGenerator } = await import("./lesson-generator");
+        await lessonGenerator.analyzeGameForLearning(userId, game.id, moves);
+        console.log(`Game analysis completed for game ${game.id}`);
+      } catch (error) {
+        console.log('Game analysis failed, but game stored:', error);
+      }
+
+      res.json({ 
+        message: "Game stored successfully",
+        gameId: game.id
+      });
+    } catch (error) {
+      console.error("Error storing game:", error);
+      res.status(500).json({ message: "Failed to store game result" });
     }
   });
 
