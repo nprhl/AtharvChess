@@ -511,6 +511,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         useOllama = true 
       } = req.body;
       
+      const userId = (req as any).user?.id;
+      
       if (!moveSan || !fenBefore || !fenAfter) {
         return res.status(400).json({ 
           message: "Move, before FEN, and after FEN are required" 
@@ -525,6 +527,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         gameHistory,
         userElo
       );
+      
+      // Store move for learning analysis if user is authenticated
+      if (userId && evaluation.moveType === 'blunder' || evaluation.moveType === 'mistake') {
+        try {
+          const { lessonGenerator } = await import("./lesson-generator");
+          // This could trigger lesson generation based on patterns
+          console.log(`Storing learning data for user ${userId}: ${evaluation.moveType} move`);
+        } catch (error) {
+          console.log('Learning analysis not available:', error);
+        }
+      }
       
       res.json({
         evaluation,

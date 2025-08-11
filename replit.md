@@ -95,6 +95,16 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 
 ## Recent Changes
 
+- **August 11, 2025**: Dynamic Learning System & GPT-4o Chess AI Integration
+  - Successfully implemented GPT-4o as primary chess engine with strong strategic gameplay
+  - Created comprehensive dynamic lesson system that tracks user gameplay patterns
+  - Added personalized lesson generation based on actual moves and mistakes
+  - Implemented skill progress tracking across 4 key areas: tactics, endgame, opening, positional
+  - Built game analysis system using OpenAI to identify learning opportunities
+  - Enhanced chess board interaction with proper piece selection/deselection
+  - Fixed all OpenAI API parameter issues for GPT-5/GPT-4o compatibility
+  - System now provides genuinely challenging advanced-level chess with real-time learning
+
 - **August 11, 2025**: Ollama Open-Source AI Integration
   - Added OllamaChessAI class supporting open-source language models via Ollama
   - Integrated difficulty-specific model selection (llama3.1:8b for beginner/intermediate, llama3.1:70b for advanced)

@@ -75,6 +75,45 @@ export const puzzleAttempts = pgTable("puzzle_attempts", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Game analysis and learning patterns
+export const gameAnalysis = pgTable("game_analysis", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  gameId: integer("game_id").references(() => games.id),
+  movesAnalyzed: jsonb("moves_analyzed").notNull(), // Detailed move analysis
+  weaknessesFound: text("weaknesses_found").array(), // e.g., ['tactics', 'endgame', 'opening']
+  strengthsFound: text("strengths_found").array(),
+  suggestedLessons: text("suggested_lessons").array(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Dynamic lesson recommendations
+export const dynamicLessons = pgTable("dynamic_lessons", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  lessonType: text("lesson_type").notNull(), // 'pattern_practice', 'mistake_correction', 'skill_building'
+  targetWeakness: text("target_weakness").notNull(),
+  exercises: jsonb("exercises").notNull(), // Specific exercises based on user's games
+  priority: integer("priority").notNull().default(1), // 1-10, higher = more important
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// User progress tracking per skill area
+export const skillProgress = pgTable("skill_progress", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  skillArea: text("skill_area").notNull(), // 'tactics', 'endgame', 'opening', 'positional'
+  currentLevel: integer("current_level").notNull().default(1), // 1-10 scale
+  practiceCount: integer("practice_count").notNull().default(0),
+  successRate: integer("success_rate").notNull().default(0), // percentage
+  lastPracticed: timestamp("last_practiced"),
+  improvementTrend: text("improvement_trend"), // 'improving', 'stable', 'declining'
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
