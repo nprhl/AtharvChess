@@ -8,6 +8,7 @@ import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, 
 import { z } from "zod";
 import { ChessAI, type Difficulty } from "./chess-ai";
 import { OllamaChessAI } from "./ollama-chess-ai";
+import { OpenAIChessAI } from "./openai-chess-ai";
 import { MoveEvaluator } from "./move-evaluator";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -367,7 +368,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`Ollama AI (${difficulty}) played: ${bestMove.san}`);
           }
         } catch (error) {
-          console.log('Ollama unavailable, falling back to traditional engine');
+          console.log('Ollama unavailable, trying OpenAI...');
+        }
+      }
+
+      // Try OpenAI as secondary option
+      if (!bestMove && process.env.OPENAI_API_KEY) {
+        try {
+          const openaiAI = new OpenAIChessAI(difficulty as Difficulty);
+          bestMove = await openaiAI.getBestMove(fen);
+          if (bestMove) {
+            aiEngine = 'openai';
+            console.log(`OpenAI AI (${difficulty}) played: ${bestMove.san}`);
+          }
+        } catch (error) {
+          console.log('OpenAI unavailable, falling back to traditional engine');
         }
       }
 

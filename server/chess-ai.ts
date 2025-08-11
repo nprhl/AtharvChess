@@ -50,7 +50,19 @@ export class ChessAI {
 
     console.log(`ChessAI: Computing ${this.difficulty} move with ${possibleMoves.length} options`);
 
-    // For beginner, occasionally play random moves for learning
+    // For intermediate and advanced, use proper minimax search
+    const searchDepth = this.getSearchDepth();
+    const isMaximizing = chess.turn() === 'b'; // AI plays as black, maximize
+    
+    console.log(`ChessAI: ${this.difficulty} using minimax depth ${searchDepth}`);
+    const result = this.minimax(chess, searchDepth, -Infinity, Infinity, isMaximizing);
+    
+    if (result.bestMove) {
+      console.log(`ChessAI: ${this.difficulty} selected ${result.bestMove.san} (score: ${result.score.toFixed(2)})`);
+      return result.bestMove;
+    }
+
+    // Fallback: For beginner, occasionally play random moves for learning
     if (this.difficulty === 'beginner' && Math.random() < 0.3) {
       // Still check for critical moves first
       const criticalMove = this.findCriticalMove(chess, possibleMoves);
@@ -72,18 +84,6 @@ export class ChessAI {
       const selectedMove = scoredMoves[Math.floor(Math.random() * Math.min(3, scoredMoves.length))].move;
       console.log(`ChessAI: Beginner random selection: ${selectedMove.san}`);
       return selectedMove;
-    }
-
-    // For intermediate and advanced, use proper minimax search
-    const searchDepth = this.getSearchDepth();
-    const isMaximizing = chess.turn() === 'b'; // AI plays as black, maximize
-    
-    console.log(`ChessAI: ${this.difficulty} using minimax depth ${searchDepth}`);
-    const result = this.minimax(chess, searchDepth, -Infinity, Infinity, isMaximizing);
-    
-    if (result.bestMove) {
-      console.log(`ChessAI: ${this.difficulty} selected ${result.bestMove.san} (score: ${result.score.toFixed(2)})`);
-      return result.bestMove;
     }
     
     console.log(`ChessAI: ${this.difficulty} fallback to first move: ${possibleMoves[0].san}`);
