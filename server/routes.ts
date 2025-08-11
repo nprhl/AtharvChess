@@ -373,6 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fallback to traditional chess engine
       if (!bestMove) {
+        console.log(`Creating traditional ChessAI with difficulty: ${difficulty}`);
         const traditionalAI = new ChessAI(difficulty as Difficulty);
         bestMove = traditionalAI.getBestMove(fen);
         aiEngine = 'traditional';

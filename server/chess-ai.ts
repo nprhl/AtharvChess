@@ -48,11 +48,16 @@ export class ChessAI {
       return null;
     }
 
+    console.log(`ChessAI: Computing ${this.difficulty} move with ${possibleMoves.length} options`);
+
     // For beginner, occasionally play random moves for learning
     if (this.difficulty === 'beginner' && Math.random() < 0.3) {
       // Still check for critical moves first
       const criticalMove = this.findCriticalMove(chess, possibleMoves);
-      if (criticalMove) return criticalMove;
+      if (criticalMove) {
+        console.log(`ChessAI: Found critical move for beginner: ${criticalMove.san}`);
+        return criticalMove;
+      }
       
       // Otherwise, bias towards good moves but sometimes play weaker ones
       const scoredMoves = possibleMoves.map(move => {
@@ -64,22 +69,32 @@ export class ChessAI {
       
       scoredMoves.sort((a, b) => b.score - a.score);
       // Pick from top 3 moves with some randomness
-      return scoredMoves[Math.floor(Math.random() * Math.min(3, scoredMoves.length))].move;
+      const selectedMove = scoredMoves[Math.floor(Math.random() * Math.min(3, scoredMoves.length))].move;
+      console.log(`ChessAI: Beginner random selection: ${selectedMove.san}`);
+      return selectedMove;
     }
 
     // For intermediate and advanced, use proper minimax search
     const searchDepth = this.getSearchDepth();
     const isMaximizing = chess.turn() === 'b'; // AI plays as black, maximize
     
+    console.log(`ChessAI: ${this.difficulty} using minimax depth ${searchDepth}`);
     const result = this.minimax(chess, searchDepth, -Infinity, Infinity, isMaximizing);
-    return result.bestMove || possibleMoves[0];
+    
+    if (result.bestMove) {
+      console.log(`ChessAI: ${this.difficulty} selected ${result.bestMove.san} (score: ${result.score.toFixed(2)})`);
+      return result.bestMove;
+    }
+    
+    console.log(`ChessAI: ${this.difficulty} fallback to first move: ${possibleMoves[0].san}`);
+    return possibleMoves[0];
   }
 
   private getSearchDepth(): number {
     switch (this.difficulty) {
       case 'beginner': return 2;
       case 'intermediate': return 3;
-      case 'advanced': return 4; // Much deeper search for strong play
+      case 'advanced': return 5; // Even deeper for stronger play
       default: return 2;
     }
   }

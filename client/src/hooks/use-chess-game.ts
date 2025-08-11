@@ -84,7 +84,8 @@ export function useChessGame(options: UseChessGameOptions = {}) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           fen: gameEngine.fen(),
-          difficulty: currentDifficulty 
+          difficulty: currentDifficulty,
+          useOllama: true
         })
       });
       

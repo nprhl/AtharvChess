@@ -65,7 +65,8 @@ export default function GamePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           fen: game.fen(),
-          difficulty: settings.aiDifficulty 
+          difficulty: settings.aiDifficulty,
+          useOllama: true
         })
       });
       
