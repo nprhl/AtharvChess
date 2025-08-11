@@ -8,6 +8,7 @@ import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, 
 import { z } from "zod";
 import { ChessAI, type Difficulty } from "./chess-ai";
 import { OllamaChessAI } from "./ollama-chess-ai";
+import { MoveEvaluator } from "./move-evaluator";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -468,6 +469,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('AI hint error:', error);
       res.status(500).json({ message: "AI service unavailable" });
+    }
+  });
+
+  // Move evaluation endpoint for real-time feedback
+  app.post("/api/ai/evaluate-move", async (req, res) => {
+    try {
+      const { 
+        moveSan, 
+        fenBefore, 
+        fenAfter, 
+        gameHistory = "", 
+        userElo = 1200,
+        useOllama = true 
+      } = req.body;
+      
+      if (!moveSan || !fenBefore || !fenAfter) {
+        return res.status(400).json({ 
+          message: "Move, before FEN, and after FEN are required" 
+        });
+      }
+
+      const evaluator = new MoveEvaluator();
+      const evaluation = await evaluator.evaluateMove(
+        moveSan,
+        fenBefore, 
+        fenAfter,
+        gameHistory,
+        userElo
+      );
+      
+      res.json({
+        evaluation,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Move evaluation error:', error);
+      res.status(500).json({ 
+        message: "Move evaluation service unavailable",
+        evaluation: {
+          message: "Nice move! Keep playing.",
+          moveType: 'good',
+          explanation: "Unable to provide detailed analysis right now.",
+          tactical: [],
+          strategic: [],
+          rating: 5
+        }
+      });
     }
   });
 

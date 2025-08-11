@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ChessBoard from "@/components/chess-board";
 import AIHintCard from "@/components/ai-hint-card";
+import MoveEvaluationDisplay from "@/components/move-evaluation";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,10 @@ export default function GamePage() {
     moveHistory,
     isComputerThinking,
     gameMode,
-    playerColor
+    playerColor,
+    lastMoveEvaluation,
+    showEvaluation,
+    dismissEvaluation
   } = useChessGame({ 
     gameMode: settings.gameMode,
     difficulty: settings.aiDifficulty,
@@ -225,6 +229,14 @@ export default function GamePage() {
           </div>
         )}
       </div>
+
+      {/* Move Evaluation Display */}
+      <MoveEvaluationDisplay
+        evaluation={lastMoveEvaluation?.evaluation || null}
+        moveSan={lastMoveEvaluation?.moveSan || ""}
+        onDismiss={dismissEvaluation}
+        isVisible={showEvaluation}
+      />
     </section>
   );
 }

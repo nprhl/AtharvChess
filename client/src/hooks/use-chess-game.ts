@@ -6,6 +6,15 @@ import { GameStorageManager, type GameState } from '@/lib/local-storage';
 export type GameMode = 'pvp' | 'pvc'; // Player vs Player or Player vs Computer
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
+interface MoveEvaluation {
+  message: string;
+  moveType: 'brilliant' | 'excellent' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
+  explanation: string;
+  tactical: string[];
+  strategic: string[];
+  rating: number;
+}
+
 interface UseChessGameOptions {
   initialFen?: string;
   gameMode?: GameMode;
@@ -22,6 +31,11 @@ export function useChessGame(options: UseChessGameOptions = {}) {
   const [currentGameMode] = useState(gameMode);
   const [currentDifficulty] = useState(difficulty);
   const [currentPlayerColor] = useState(playerColor);
+  const [lastMoveEvaluation, setLastMoveEvaluation] = useState<{
+    evaluation: MoveEvaluation;
+    moveSan: string;
+  } | null>(null);
+  const [showEvaluation, setShowEvaluation] = useState(false);
 
   // Force re-render when game state changes
   const triggerUpdate = useCallback(() => {
@@ -92,6 +106,43 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     return false;
   }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentDifficulty, currentPlayerColor, isComputerThinking]);
 
+  // Evaluate player's move with AI feedback
+  const evaluatePlayerMove = useCallback(async (moveSan: string, fenBefore: string, fenAfter: string, userElo: number = 1200) => {
+    try {
+      const gameHistory = gameEngine.history.map(m => m.san).join(' ');
+      
+      const response = await fetch('/api/ai/evaluate-move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          moveSan,
+          fenBefore,
+          fenAfter,
+          gameHistory,
+          userElo,
+          useOllama: true
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setLastMoveEvaluation({
+          evaluation: data.evaluation,
+          moveSan
+        });
+        setShowEvaluation(true);
+      }
+    } catch (error) {
+      console.error('Failed to evaluate move:', error);
+    }
+  }, [gameEngine.history]);
+
+  const dismissEvaluation = useCallback(() => {
+    setShowEvaluation(false);
+    // Clear after animation
+    setTimeout(() => setLastMoveEvaluation(null), 300);
+  }, []);
+
   const makeMove = useCallback((from: Square, to: Square, promotion?: string): boolean => {
     // In computer mode, only allow player moves on their turn
     if (currentGameMode === 'pvc') {
@@ -104,11 +155,23 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       }
     }
 
+    // Capture FEN before the move for evaluation
+    const fenBefore = gameEngine.fen();
     const success = gameEngine.makeMove(from, to, promotion);
     
     if (success) {
+      const fenAfter = gameEngine.fen();
+      const lastMove = gameEngine.history[gameEngine.history.length - 1];
+      
       triggerUpdate();
       saveGameState();
+      
+      // Evaluate the player's move with AI feedback
+      if (lastMove && lastMove.san) {
+        // Get user ELO from some context (you might need to pass this in)
+        const userElo = 1200; // Default, could be retrieved from user context
+        evaluatePlayerMove(lastMove.san, fenBefore, fenAfter, userElo);
+      }
       
       // Trigger computer move after player move in PvC mode
       if (currentGameMode === 'pvc') {
@@ -118,7 +181,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       }
     }
     return success;
-  }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentPlayerColor, isComputerThinking, makeComputerMove]);
+  }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentPlayerColor, isComputerThinking, makeComputerMove, evaluatePlayerMove]);
 
   const undoMove = useCallback((): Move | null => {
     const undone = gameEngine.undoMove();
@@ -167,6 +230,11 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     isComputerThinking,
     gameMode: currentGameMode,
     difficulty: currentDifficulty,
-    playerColor: currentPlayerColor
+    playerColor: currentPlayerColor,
+    // Move evaluation features
+    evaluatePlayerMove,
+    lastMoveEvaluation,
+    showEvaluation,
+    dismissEvaluation
   };
 }
