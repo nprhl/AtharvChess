@@ -393,6 +393,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           console.log('Ollama also unavailable, falling back to traditional engine');
         }
+      } else if (!bestMove) {
+        console.log('Skipping Ollama, falling back to traditional engine');
       }
 
       // Fallback to traditional chess engine

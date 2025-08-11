@@ -109,15 +109,16 @@ export class OpenAIChessAI {
             content: prompt
           }
         ],
-        response_format: { type: "json_object" },
-        temperature: this.getTemperature()
+        response_format: { type: "json_object" }
       };
 
-      // GPT-5 uses max_completion_tokens, older models use max_tokens
+      // GPT-5 has different parameter support
       if (model.startsWith('gpt-5')) {
         completionParams.max_completion_tokens = 150;
+        // GPT-5 only supports default temperature (1.0)
       } else {
         completionParams.max_tokens = 150;
+        completionParams.temperature = this.getTemperature();
       }
 
       const response = await this.openai.chat.completions.create(completionParams);
