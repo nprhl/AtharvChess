@@ -106,9 +106,12 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
           handleDrop(square);
         }}
         onClick={(e) => {
-          // Handle click on empty square for move completion
+          // Handle click on empty square for move completion or deselection
           if (!piece && draggedPiece && validMoves.includes(square)) {
             handleDrop(square);
+          } else if (!piece && draggedPiece) {
+            // Clicking on empty square that's not a valid move deselects piece
+            handleDragEnd();
           }
         }}
       >
@@ -127,10 +130,19 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
             }}
             onDragEnd={handleDragEnd}
             onClick={(e) => {
+              e.stopPropagation();
               // Handle click-to-move for mobile or as fallback
               if (!draggedPiece && piece.color === game.turn()) {
+                // Select this piece
+                handleDragStart(piece, square);
+              } else if (draggedPiece && draggedPiece.square === square) {
+                // Clicking the same piece deselects it
+                handleDragEnd();
+              } else if (draggedPiece && piece.color === game.turn()) {
+                // Clicking a different piece of same color switches selection
                 handleDragStart(piece, square);
               } else if (draggedPiece && validMoves.includes(square)) {
+                // Capture or move to this square
                 handleDrop(square);
               }
             }}

@@ -39,7 +39,7 @@ export class OpenAIChessAI {
       const aiMove = await this.getAIMove(fen, possibleMoves);
       return aiMove;
     } catch (error) {
-      console.error('Error getting OpenAI move:', error.message || error);
+      console.error('Error getting OpenAI move:', (error as Error).message || error);
       return null;
     }
   }

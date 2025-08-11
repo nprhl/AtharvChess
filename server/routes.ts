@@ -387,10 +387,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log('OpenAI returned null move');
           }
         } catch (error) {
-          console.log('OpenAI error:', error.message);
+          console.log('OpenAI error:', (error as Error).message);
         }
-      } else {
-        console.log(`OpenAI check: bestMove=${bestMove}, API_KEY=${process.env.OPENAI_API_KEY ? 'present' : 'missing'}`);
+      } else if (!bestMove) {
+        console.log(`OpenAI skipped: API_KEY=${process.env.OPENAI_API_KEY ? 'present' : 'missing'}`);
       }
 
       // Fallback to traditional chess engine
