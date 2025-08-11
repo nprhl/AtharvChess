@@ -4,6 +4,7 @@ import AIHintCard from "@/components/ai-hint-card";
 import MoveEvaluationDisplay from "@/components/move-evaluation";
 import PromotionDialog from "@/components/promotion-dialog";
 import GameSettingsDialog from "@/components/game-settings-dialog";
+import AnalysisPanel from "@/components/AnalysisPanel";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
@@ -243,6 +244,9 @@ export default function GamePage() {
             </Button>
           )}
         </div>
+
+        {/* Stockfish Analysis Panel */}
+        <AnalysisPanel fen={game.fen()} />
 
         {/* Game Over Message */}
         {isGameOver() && gameOverReason && (
