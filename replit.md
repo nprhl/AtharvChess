@@ -30,6 +30,14 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 
 ## Key Components
 
+### AI Integration System
+- **OpenAI GPT-4o Integration**: Primary chess engine for advanced gameplay and analysis
+- **Multi-Engine Architecture**: Ollama (open-source) → OpenAI → Traditional fallback system
+- **Move Evaluation**: Real-time analysis of player moves with tactical and strategic feedback
+- **Hint Generation**: Context-aware suggestions based on current position and game history
+- **Lesson Generation**: Dynamic lesson creation from actual gameplay patterns and mistakes
+- **Progress Analysis**: AI-powered skill assessment and improvement recommendations
+
 ### New UI Components
 - **PromotionDialog**: Modal dialog for pawn promotion piece selection
 - **GameSettingsDialog**: Comprehensive settings interface for game configuration
@@ -67,11 +75,18 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 
 1. **Game Initialization**: Load saved game from localStorage or start new game
 2. **Move Processing**: Validate moves client-side, update local state, sync to server
-3. **Progress Tracking**: Lessons completion and statistics stored server-side
-4. **Settings Sync**: User preferences stored locally with server backup
-5. **AI Integration**: Hint requests sent to server for processing
+3. **AI Move Generation**: OpenAI GPT-4o analyzes position and generates strategic moves
+4. **Move Evaluation**: Real-time analysis using OpenAI for tactical and strategic feedback
+5. **Progress Tracking**: Lessons completion and statistics stored server-side
+6. **Settings Sync**: User preferences stored locally with server backup
+7. **Dynamic Learning**: OpenAI analyzes gameplay patterns to generate personalized lessons
+8. **Hint System**: Context-aware suggestions powered by GPT-4o based on current position
 
 ## External Dependencies
+
+### AI & Machine Learning
+- **OpenAI API**: GPT-4o model for chess move generation, analysis, and lesson creation
+- **@anthropic-ai/sdk**: Claude integration for advanced chess analysis (available but not primary)
 
 ### Core Libraries
 - **chess.js**: Chess game logic and validation
@@ -104,6 +119,7 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 
 ### Environment Configuration
 - Database connection via `DATABASE_URL` environment variable
+- OpenAI API access via `OPENAI_API_KEY` environment variable
 - Development/production mode detection via `NODE_ENV`
 - Replit-specific features enabled via `REPL_ID` detection
 
@@ -117,6 +133,7 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
   - **Settings Navigation**: Made header gear icon clickable to navigate to settings page
   - **Progress Data Recovery**: Fixed 500 server errors on progress tab by creating robust progress endpoint
   - **Real Progress Statistics**: Progress page now displays actual user ELO, games won, puzzles solved, and skill areas
+  - **OpenAI Integration Optimization**: Enhanced move evaluation, hint generation, and lesson creation using GPT-4o
   - Chess game now fully complies with official chess rules including proper pawn promotion handling
 
 - **August 11, 2025**: Dynamic Learning System & GPT-4o Chess AI Integration
