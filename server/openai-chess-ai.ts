@@ -97,7 +97,7 @@ export class OpenAIChessAI {
       const model = await this.getBestAvailableModel();
       console.log(`OpenAI: Using model ${model}`);
       
-      const response = await this.openai.chat.completions.create({
+      const completionParams: any = {
         model: model,
         messages: [
           {
@@ -110,9 +110,17 @@ export class OpenAIChessAI {
           }
         ],
         response_format: { type: "json_object" },
-        temperature: this.getTemperature(),
-        max_tokens: 150
-      });
+        temperature: this.getTemperature()
+      };
+
+      // GPT-5 uses max_completion_tokens, older models use max_tokens
+      if (model.startsWith('gpt-5')) {
+        completionParams.max_completion_tokens = 150;
+      } else {
+        completionParams.max_tokens = 150;
+      }
+
+      const response = await this.openai.chat.completions.create(completionParams);
 
       const content = response.choices[0].message.content;
       if (!content) return null;
