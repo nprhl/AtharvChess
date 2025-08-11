@@ -1,12 +1,43 @@
-import { Chess, Move } from 'chess.js';
+import { Chess, Move, Square } from 'chess.js';
 
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
+// Piece values for evaluation
+const PIECE_VALUES = {
+  p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000,
+  P: -100, N: -320, B: -330, R: -500, Q: -900, K: -20000
+};
+
+// Positional piece tables for better evaluation
+const PAWN_TABLE = [
+  0,  0,  0,  0,  0,  0,  0,  0,
+  50, 50, 50, 50, 50, 50, 50, 50,
+  10, 10, 20, 30, 30, 20, 10, 10,
+  5,  5, 10, 25, 25, 10,  5,  5,
+  0,  0,  0, 20, 20,  0,  0,  0,
+  5, -5,-10,  0,  0,-10, -5,  5,
+  5, 10, 10,-20,-20, 10, 10,  5,
+  0,  0,  0,  0,  0,  0,  0,  0
+];
+
+const KNIGHT_TABLE = [
+  -50,-40,-30,-30,-30,-30,-40,-50,
+  -40,-20,  0,  0,  0,  0,-20,-40,
+  -30,  0, 10, 15, 15, 10,  0,-30,
+  -30,  5, 15, 20, 20, 15,  5,-30,
+  -30,  0, 15, 20, 20, 15,  0,-30,
+  -30,  5, 10, 15, 15, 10,  5,-30,
+  -40,-20,  0,  5,  5,  0,-20,-40,
+  -50,-40,-30,-30,-30,-30,-40,-50,
+];
+
 export class ChessAI {
   private difficulty: Difficulty;
+  private transpositionTable: Map<string, { score: number; depth: number }>;
 
   constructor(difficulty: Difficulty = 'beginner') {
     this.difficulty = difficulty;
+    this.transpositionTable = new Map();
   }
 
   public getBestMove(fen: string): Move | null {
@@ -17,52 +48,134 @@ export class ChessAI {
       return null;
     }
 
-    // First, check for critical moves that should always be played
-    const criticalMove = this.findCriticalMove(chess, possibleMoves);
-    if (criticalMove) {
-      return criticalMove;
-    }
-
-    // Evaluate all moves and pick the best one
-    const searchDepth = this.getSearchDepth();
-    let bestMove = possibleMoves[0];
-    let bestScore = -Infinity;
-
-    for (const move of possibleMoves) {
-      try {
+    // For beginner, occasionally play random moves for learning
+    if (this.difficulty === 'beginner' && Math.random() < 0.3) {
+      // Still check for critical moves first
+      const criticalMove = this.findCriticalMove(chess, possibleMoves);
+      if (criticalMove) return criticalMove;
+      
+      // Otherwise, bias towards good moves but sometimes play weaker ones
+      const scoredMoves = possibleMoves.map(move => {
         chess.move(move);
-        let score = this.evaluatePosition(chess, searchDepth);
-        
-        // Add difficulty-based randomness to scoring (much less than before)
-        if (this.difficulty === 'beginner') {
-          score += (Math.random() - 0.5) * 20; // Reduced randomness
-        } else if (this.difficulty === 'intermediate') {
-          score += (Math.random() - 0.5) * 10; // Small randomness
-        }
-        // Advanced has no randomness
-        
+        const score = this.evaluatePosition(chess) + (Math.random() - 0.5) * 50;
         chess.undo();
-
-        if (score > bestScore) {
-          bestScore = score;
-          bestMove = move;
-        }
-      } catch (error) {
-        // Skip invalid moves
-        continue;
-      }
+        return { move, score };
+      });
+      
+      scoredMoves.sort((a, b) => b.score - a.score);
+      // Pick from top 3 moves with some randomness
+      return scoredMoves[Math.floor(Math.random() * Math.min(3, scoredMoves.length))].move;
     }
 
-    return bestMove;
+    // For intermediate and advanced, use proper minimax search
+    const searchDepth = this.getSearchDepth();
+    const isMaximizing = chess.turn() === 'b'; // AI plays as black, maximize
+    
+    const result = this.minimax(chess, searchDepth, -Infinity, Infinity, isMaximizing);
+    return result.bestMove || possibleMoves[0];
   }
 
   private getSearchDepth(): number {
     switch (this.difficulty) {
-      case 'beginner': return 1;
-      case 'intermediate': return 2;
-      case 'advanced': return 3;
-      default: return 1;
+      case 'beginner': return 2;
+      case 'intermediate': return 3;
+      case 'advanced': return 4; // Much deeper search for strong play
+      default: return 2;
     }
+  }
+
+  // Advanced minimax algorithm with alpha-beta pruning
+  private minimax(
+    chess: Chess, 
+    depth: number, 
+    alpha: number, 
+    beta: number, 
+    isMaximizing: boolean
+  ): { bestMove: Move | null; score: number } {
+    const fen = chess.fen();
+    
+    // Check transposition table
+    if (this.transpositionTable.has(fen)) {
+      const entry = this.transpositionTable.get(fen)!;
+      if (entry.depth >= depth) {
+        return { bestMove: null, score: entry.score };
+      }
+    }
+
+    if (depth === 0 || chess.isGameOver()) {
+      const score = this.evaluatePosition(chess);
+      this.transpositionTable.set(fen, { score, depth });
+      return { bestMove: null, score };
+    }
+
+    const moves = chess.moves({ verbose: true });
+    let bestMove: Move | null = null;
+    let bestScore = isMaximizing ? -Infinity : Infinity;
+
+    // Order moves for better alpha-beta pruning
+    const orderedMoves = this.orderMoves(chess, moves);
+
+    for (const move of orderedMoves) {
+      chess.move(move);
+      const result = this.minimax(chess, depth - 1, alpha, beta, !isMaximizing);
+      chess.undo();
+
+      if (isMaximizing) {
+        if (result.score > bestScore) {
+          bestScore = result.score;
+          bestMove = move;
+        }
+        alpha = Math.max(alpha, bestScore);
+      } else {
+        if (result.score < bestScore) {
+          bestScore = result.score;
+          bestMove = move;
+        }
+        beta = Math.min(beta, bestScore);
+      }
+
+      // Alpha-beta pruning
+      if (beta <= alpha) {
+        break;
+      }
+    }
+
+    this.transpositionTable.set(fen, { score: bestScore, depth });
+    return { bestMove, score: bestScore };
+  }
+
+  // Order moves for better alpha-beta pruning efficiency
+  private orderMoves(chess: Chess, moves: Move[]): Move[] {
+    return moves.sort((a, b) => {
+      let scoreA = 0;
+      let scoreB = 0;
+
+      // Prioritize captures
+      if (a.captured) scoreA += 100 + (PIECE_VALUES[a.captured as keyof typeof PIECE_VALUES] || 0);
+      if (b.captured) scoreB += 100 + (PIECE_VALUES[b.captured as keyof typeof PIECE_VALUES] || 0);
+
+      // Prioritize checks
+      chess.move(a);
+      if (chess.inCheck()) scoreA += 50;
+      chess.undo();
+
+      chess.move(b);
+      if (chess.inCheck()) scoreB += 50;
+      chess.undo();
+
+      // Prioritize central moves
+      const centerBonus = (square: Square) => {
+        const file = square.charCodeAt(0) - 97; // a=0, h=7
+        const rank = parseInt(square[1]) - 1; // 1=0, 8=7
+        const distFromCenter = Math.abs(3.5 - file) + Math.abs(3.5 - rank);
+        return 10 - distFromCenter;
+      };
+
+      scoreA += centerBonus(a.to);
+      scoreB += centerBonus(b.to);
+
+      return scoreB - scoreA;
+    });
   }
 
   private getRandomMove(moves: Move[]): Move {
@@ -113,75 +226,122 @@ export class ChessAI {
     return null; // No critical move found
   }
 
-  private evaluatePosition(chess: Chess, depth: number = 1): number {
+  // Enhanced position evaluation function
+  private evaluatePosition(chess: Chess): number {
     if (chess.isCheckmate()) {
-      return chess.turn() === 'w' ? -9999 : 9999;
+      return chess.turn() === 'w' ? -20000 : 20000;
     }
-
-    if (chess.isDraw()) {
+    
+    if (chess.isDraw() || chess.isStalemate()) {
       return 0;
     }
 
     let score = 0;
     const board = chess.board();
 
-    // Piece values
-    const pieceValues = {
-      'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000
-    };
-
-    // Count material
+    // Material and positional evaluation
     for (let rank = 0; rank < 8; rank++) {
       for (let file = 0; file < 8; file++) {
         const piece = board[rank][file];
         if (piece) {
-          let pieceValue = pieceValues[piece.type as keyof typeof pieceValues];
+          const pieceKey = (piece.type + (piece.color === 'w' ? '' : '')) as keyof typeof PIECE_VALUES;
+          const pieceValue = PIECE_VALUES[pieceKey] || 0;
+          const positionalValue = this.getPositionalValue(piece, rank, file);
           
-          // Advanced difficulty considers positional bonuses
-          if (this.difficulty === 'advanced') {
-            pieceValue += this.getPositionalBonus(piece, rank, file);
+          if (piece.color === 'b') {
+            score += pieceValue + positionalValue;
+          } else {
+            score -= pieceValue + positionalValue;
           }
-          
-          score += piece.color === 'w' ? pieceValue : -pieceValue;
         }
       }
     }
 
-    // Basic tactical awareness for all levels
-    const moves = chess.moves();
-    score += moves.length * (this.difficulty === 'beginner' ? 2 : 5); // Mobility bonus
+    // Advanced tactical evaluation
+    if (this.difficulty === 'advanced' || this.difficulty === 'intermediate') {
+      score += this.getTacticalScore(chess);
+    }
+
+    return score;
+  }
+
+  // Get positional value based on piece type and square
+  private getPositionalValue(piece: any, rank: number, file: number): number {
+    const isWhite = piece.color === 'w';
+    const squareIndex = isWhite ? (7 - rank) * 8 + file : rank * 8 + file;
     
-    // Check for tactical threats
+    switch (piece.type) {
+      case 'p':
+        return PAWN_TABLE[squareIndex] * (isWhite ? -1 : 1);
+      case 'n':
+        return KNIGHT_TABLE[squareIndex] * (isWhite ? -1 : 1);
+      case 'b':
+        // Bishops are better on long diagonals
+        const diagonalBonus = Math.abs(rank - file) <= 1 ? 10 : 0;
+        return diagonalBonus * (isWhite ? -1 : 1);
+      case 'r':
+        // Rooks prefer open files and 7th rank
+        let rookBonus = 0;
+        if (rank === (isWhite ? 1 : 6)) rookBonus += 20; // 7th rank
+        return rookBonus * (isWhite ? -1 : 1);
+      case 'q':
+        // Queen prefers central squares
+        const queenCenterBonus = (4 - Math.abs(3.5 - file)) + (4 - Math.abs(3.5 - rank));
+        return queenCenterBonus * 2 * (isWhite ? -1 : 1);
+      case 'k':
+        // King safety evaluation (different for opening/endgame)
+        const kingBonus = this.getKingSafetyBonus(rank, file, isWhite);
+        return kingBonus * (isWhite ? -1 : 1);
+      default:
+        return 0;
+    }
+  }
+
+  // Enhanced tactical evaluation
+  private getTacticalScore(chess: Chess): number {
+    let tacticalScore = 0;
+    
+    // Check bonus/penalty
     if (chess.inCheck()) {
-      score += chess.turn() === 'w' ? -50 : 50;
+      tacticalScore += chess.turn() === 'w' ? -30 : 30;
     }
     
-    // Encourage development and basic principles for beginners
-    if (this.difficulty === 'beginner') {
-      score += this.getBeginnerBonus(chess);
-    }
-
-    // Simple recursion for higher difficulties
-    if (depth > 1 && this.difficulty === 'advanced') {
-      const moves = chess.moves({ verbose: true });
-      let bestResponseScore = chess.turn() === 'w' ? Infinity : -Infinity;
-      
-      for (let i = 0; i < Math.min(moves.length, 5); i++) { // Limit to top 5 moves for performance
-        chess.move(moves[i]);
-        const responseScore = this.evaluatePosition(chess, depth - 1);
-        chess.undo();
-        
-        if (chess.turn() === 'w' && responseScore < bestResponseScore) {
-          bestResponseScore = responseScore;
-        } else if (chess.turn() === 'b' && responseScore > bestResponseScore) {
-          bestResponseScore = responseScore;
+    // Mobility (number of legal moves)
+    const currentMobility = chess.moves().length;
+    tacticalScore += chess.turn() === 'b' ? currentMobility * 1 : -currentMobility * 1;
+    
+    // Control of center squares
+    const centerSquares = ['d4', 'd5', 'e4', 'e5'] as Square[];
+    for (const square of centerSquares) {
+      const piece = chess.get(square);
+      if (piece) {
+        if (piece.color === 'b') {
+          tacticalScore += piece.type === 'p' ? 10 : 5;
+        } else {
+          tacticalScore -= piece.type === 'p' ? 10 : 5;
         }
       }
-      
-      score = bestResponseScore;
     }
 
-    return chess.turn() === 'w' ? score : -score;
+    return tacticalScore;
+  }
+
+  // King safety evaluation
+  private getKingSafetyBonus(rank: number, file: number, isWhite: boolean): number {
+    // In opening/middlegame, king should be castled (corners)
+    // In endgame, king should be active (center)
+    
+    // For now, prefer corners for safety
+    if ((file <= 2 || file >= 5) && (rank === (isWhite ? 7 : 0))) {
+      return 30; // Castled position bonus
+    }
+    
+    // Penalty for exposed king
+    if (rank >= 2 && rank <= 5 && file >= 2 && file <= 5) {
+      return -20; // Exposed king penalty
+    }
+    
+    return 0;
   }
 
   private getBeginnerBonus(chess: Chess): number {
