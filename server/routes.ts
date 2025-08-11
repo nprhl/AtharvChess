@@ -370,20 +370,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           console.log('Ollama unavailable, trying OpenAI...');
         }
+      } else {
+        console.log('Ollama disabled, trying OpenAI...');
       }
 
       // Try OpenAI as secondary option
       if (!bestMove && process.env.OPENAI_API_KEY) {
+        console.log('Trying OpenAI chess AI...');
         try {
           const openaiAI = new OpenAIChessAI(difficulty as Difficulty);
           bestMove = await openaiAI.getBestMove(fen);
           if (bestMove) {
             aiEngine = 'openai';
             console.log(`OpenAI AI (${difficulty}) played: ${bestMove.san}`);
+          } else {
+            console.log('OpenAI returned null move');
           }
         } catch (error) {
-          console.log('OpenAI unavailable, falling back to traditional engine');
+          console.log('OpenAI error:', error.message);
         }
+      } else {
+        console.log(`OpenAI check: bestMove=${bestMove}, API_KEY=${process.env.OPENAI_API_KEY ? 'present' : 'missing'}`);
       }
 
       // Fallback to traditional chess engine

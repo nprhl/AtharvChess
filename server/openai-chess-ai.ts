@@ -31,14 +31,15 @@ export class OpenAIChessAI {
       // Check if OpenAI is available
       const isAvailable = await this.checkOpenAIAvailability();
       if (!isAvailable) {
-        console.log('OpenAI not available, returning null');
+        console.log('OpenAI not available: API key missing');
         return null;
       }
 
+      console.log(`OpenAI: Getting ${this.difficulty} move for ${possibleMoves.length} options`);
       const aiMove = await this.getAIMove(fen, possibleMoves);
       return aiMove;
     } catch (error) {
-      console.error('Error getting OpenAI move:', error);
+      console.error('Error getting OpenAI move:', error.message || error);
       return null;
     }
   }
