@@ -13,6 +13,7 @@ import { MoveEvaluator } from "./move-evaluator";
 import { evals as evalRoutes } from "./routes/evals";
 import { db } from "./db";
 import { games } from "@shared/schema";
+import OpenAI from "openai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -710,6 +711,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error storing game:", error);
       res.status(500).json({ message: "Failed to store game result" });
     }
+  });
+
+  // GPT helper function for blunder explanations
+  async function callGpt(prompt: string): Promise<string> {
+    try {
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 150,
+        temperature: 0.7,
+      });
+      return response.choices[0].message.content || "Unable to explain this move right now.";
+    } catch (error) {
+      console.error('OpenAI error in explanation:', error);
+      return "I can't explain this move right now. Try looking for better piece development!";
+    }
+  }
+
+  // Explain blunder endpoint
+  app.post('/api/explain', async (req, res) => {
+    const { fen, bestmove, cp_before, cp_after } = req.body;
+    
+    if (!fen || !bestmove || cp_before === undefined || cp_after === undefined) {
+      return res.status(400).json({ error: 'Missing required fields: fen, bestmove, cp_before, cp_after' });
+    }
+    
+    const prompt = `You are a children's chess coach. Position: ${fen}.
+Best computer move: ${bestmove}. Eval moved from ${cp_before} to ${cp_after}.
+Explain in 2 short sentences and give 1 tip. No new variations.`;
+    
+    const text = await callGpt(prompt);
+    res.json({ explanation: text });
   });
 
   const httpServer = createServer(app);

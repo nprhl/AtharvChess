@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useStockfish } from '../hooks/useStockfish';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { Cpu, Zap, Clock, AlertTriangle } from 'lucide-react';
+import { Button } from './ui/button';
+import { Cpu, Zap, Clock, AlertTriangle, MessageCircle } from 'lucide-react';
 import { parseCp } from '../engines/parseUci';
 
 // Fire-and-forget function to save evaluation to database
@@ -32,8 +33,11 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
   const [cp, setCp] = useState<number | null>(null);
   const [blunder, setBlunder] = useState<string | null>(null);
   const [pv, setPv] = useState<string>('');
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
   const prevFenRef = useRef<string>('');
   const lastCpRef = useRef<number | null>(null);
+  const blunderDataRef = useRef<{ fen: string; bestmove: string; cp_before: number; cp_after: number } | null>(null);
 
   useEffect(() => {
     if (!fen || !isReady) return;
@@ -41,9 +45,10 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
     // Only analyze if FEN actually changed
     if (fen === prevFenRef.current) return;
     
-    // Clear blunder message when analyzing new position
+    // Clear blunder message and explanation when analyzing new position
     if (prevFenRef.current !== '') {
       setBlunder(null);
+      setExplanation(null);
     }
     
     setAnalyzing(true);
@@ -121,6 +126,13 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
           // Detect blunder (evaluation drop of 150+ centipawns)
           if (swing < -150) {
             setBlunder(`Blunder detected (−${Math.abs(swing)} cp).`);
+            // Store blunder data for explanation
+            blunderDataRef.current = {
+              fen: fen,
+              bestmove: bestMove || 'unknown',
+              cp_before: lastCpRef.current,
+              cp_after: currentCp
+            };
           }
         }
         
@@ -136,6 +148,31 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
       saveEval(fen, depth, 'stockfish-wasm', cp, bestMove, pv);
     }
   }, [bestMove, cp, fen, depth, pv]);
+
+  // Function to get blunder explanation
+  const explainBlunder = async () => {
+    if (!blunderDataRef.current) return;
+    
+    setLoadingExplanation(true);
+    try {
+      const response = await fetch('/api/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(blunderDataRef.current)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setExplanation(data.explanation);
+      } else {
+        setExplanation("Sorry, I can't explain this move right now.");
+      }
+    } catch (error) {
+      setExplanation("Sorry, I can't explain this move right now.");
+    } finally {
+      setLoadingExplanation(false);
+    }
+  };
 
   if (!isVisible) return null;
 
@@ -155,9 +192,32 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
       <CardContent className="space-y-3">
         {/* Blunder Alert */}
         {blunder && (
-          <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
-            <AlertTriangle className="w-4 h-4 text-destructive" />
-            <span className="text-sm text-destructive font-medium">{blunder}</span>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-destructive" />
+                <span className="text-sm text-destructive font-medium">{blunder}</span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={explainBlunder}
+                disabled={loadingExplanation}
+                className="text-xs h-7"
+              >
+                <MessageCircle className="w-3 h-3 mr-1" />
+                {loadingExplanation ? 'Loading...' : 'Explain'}
+              </Button>
+            </div>
+            
+            {/* Explanation */}
+            {explanation && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                  {explanation}
+                </p>
+              </div>
+            )}
           </div>
         )}
         
