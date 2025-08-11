@@ -55,6 +55,36 @@ export class OpenAIChessAI {
     }
   }
 
+  private async getBestAvailableModel(): Promise<string> {
+    try {
+      // Try to get available models
+      const models = await this.openai.models.list();
+      const modelIds = models.data.map(m => m.id);
+      
+      // Priority order: GPT-5 variants, then GPT-4o variants
+      const preferredModels = [
+        'gpt-5',
+        'gpt-5-turbo', 
+        'gpt-4o',
+        'gpt-4o-mini',
+        'gpt-4-turbo',
+        'gpt-4'
+      ];
+      
+      for (const model of preferredModels) {
+        if (modelIds.includes(model)) {
+          return model;
+        }
+      }
+      
+      // Fallback to gpt-4o (should always be available)
+      return 'gpt-4o';
+    } catch (error) {
+      console.log('Could not fetch models, using gpt-4o fallback');
+      return 'gpt-4o';
+    }
+  }
+
   private async getAIMove(fen: string, possibleMoves: Move[]): Promise<Move | null> {
     const chess = new Chess(fen);
     const gameHistory = this.getGameHistory(chess);
@@ -63,9 +93,12 @@ export class OpenAIChessAI {
     const prompt = this.constructPrompt(fen, moveList, gameHistory, this.difficulty);
 
     try {
-      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      // Check if GPT-5 is available, fallback to gpt-4o
+      const model = await this.getBestAvailableModel();
+      console.log(`OpenAI: Using model ${model}`);
+      
       const response = await this.openai.chat.completions.create({
-        model: "gpt-4o",
+        model: model,
         messages: [
           {
             role: "system",
