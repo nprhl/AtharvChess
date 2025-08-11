@@ -1,10 +1,10 @@
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function HeaderNavigation() {
-  const mockUser = {
-    eloRating: 1250
-  };
+  const { user } = useAuth();
 
   return (
     <header className="bg-background px-4 py-3 flex items-center justify-between border-b border-border">
@@ -17,15 +17,19 @@ export default function HeaderNavigation() {
       <div className="flex items-center space-x-3">
         <div className="text-right">
           <div className="text-xs text-muted-foreground">Elo Rating</div>
-          <div className="text-sm font-semibold text-emerald-400">{mockUser.eloRating}</div>
+          <div className="text-sm font-semibold text-emerald-400">
+            {user?.eloRating || 1200}
+          </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-8 h-8 p-0 bg-secondary hover:bg-secondary/80 rounded-full"
-        >
-          <Settings className="w-4 h-4 text-muted-foreground" />
-        </Button>
+        <Link href="/settings">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-8 h-8 p-0 bg-secondary hover:bg-secondary/80 rounded-full"
+          >
+            <Settings className="w-4 h-4 text-muted-foreground" />
+          </Button>
+        </Link>
       </div>
     </header>
   );
