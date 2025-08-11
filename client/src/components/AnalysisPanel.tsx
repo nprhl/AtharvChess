@@ -5,29 +5,16 @@ import { Badge } from './ui/badge';
 import { Cpu, Zap, Clock, AlertTriangle } from 'lucide-react';
 import { parseCp } from '../engines/parseUci';
 
-// Function to save evaluation to database
-async function saveEvaluation(fen: string, depth: number, scoreCp: number, bestmove: string, pv?: string) {
+// Fire-and-forget function to save evaluation to database
+async function saveEval(fen: string, depth: number, engine: string, score_cp: number, bestmove: string, pv?: string) {
   try {
-    const response = await fetch('/api/evals', {
+    await fetch('/api/evals', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fen,
-        depth,
-        engine: 'stockfish',
-        scoreCp,
-        bestmove,
-        pv
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fen, depth, engine, score_cp, bestmove, pv })
     });
-    
-    if (!response.ok) {
-      console.error('Failed to save evaluation:', await response.text());
-    }
-  } catch (error) {
-    console.error('Error saving evaluation:', error);
+  } catch {
+    // Silent fail - don't block UI
   }
 }
 
@@ -115,7 +102,7 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
     }
   }, [lines]);
 
-  // Separate effect for blunder detection and database saving when analysis completes
+  // Blunder detection when analysis completes
   useEffect(() => {
     // Only check for blunders when we have a bestmove (analysis complete)
     const bestMoveLines = lines.filter(line => line.startsWith('bestmove '));
@@ -139,14 +126,16 @@ export default function AnalysisPanel({ fen, isVisible = true }: AnalysisPanelPr
         
         // Update reference for next comparison
         lastCpRef.current = currentCp;
-        
-        // Save evaluation to database when analysis is complete
-        if (bestMove && depth >= 10) {
-          saveEvaluation(fen, depth, currentCp, bestMove, pv);
-        }
       }
     }
-  }, [lines, bestMove, depth, fen, pv]);
+  }, [lines]);
+
+  // Fire-and-forget cache-on-write when we have complete analysis
+  useEffect(() => {
+    if (bestMove && cp !== null && fen && depth >= 10) {
+      saveEval(fen, depth, 'stockfish-wasm', cp, bestMove, pv);
+    }
+  }, [bestMove, cp, fen, depth, pv]);
 
   if (!isVisible) return null;
 
