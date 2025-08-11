@@ -57,27 +57,8 @@ export class OpenAIChessAI {
 
   private async getBestAvailableModel(): Promise<string> {
     try {
-      // Try to get available models
-      const models = await this.openai.models.list();
-      const modelIds = models.data.map(m => m.id);
-      
-      // Priority order: GPT-5 variants, then GPT-4o variants
-      const preferredModels = [
-        'gpt-5',
-        'gpt-5-turbo', 
-        'gpt-4o',
-        'gpt-4o-mini',
-        'gpt-4-turbo',
-        'gpt-4'
-      ];
-      
-      for (const model of preferredModels) {
-        if (modelIds.includes(model)) {
-          return model;
-        }
-      }
-      
-      // Fallback to gpt-4o (should always be available)
+      // For now, let's use gpt-4o which we know works reliably
+      // GPT-5 may have response format issues with chess
       return 'gpt-4o';
     } catch (error) {
       console.log('Could not fetch models, using gpt-4o fallback');
@@ -91,6 +72,8 @@ export class OpenAIChessAI {
     const moveList = possibleMoves.map(move => move.san).join(', ');
 
     const prompt = this.constructPrompt(fen, moveList, gameHistory, this.difficulty);
+    
+    console.log('OpenAI prompt being sent:', prompt.substring(0, 300) + '...');
 
     try {
       // Check if GPT-5 is available, fallback to gpt-4o
@@ -124,10 +107,24 @@ export class OpenAIChessAI {
       const response = await this.openai.chat.completions.create(completionParams);
 
       const content = response.choices[0].message.content;
-      if (!content) return null;
+      if (!content) {
+        console.log('OpenAI: No content in response');
+        return null;
+      }
 
-      const result = JSON.parse(content);
-      return this.parseAIResponse(result.move || result.best_move || result.recommended_move, possibleMoves);
+      console.log('OpenAI raw response:', content);
+      
+      try {
+        const result = JSON.parse(content);
+        console.log('OpenAI parsed result:', result);
+        const move = this.parseAIResponse(result.move || result.best_move || result.recommended_move, possibleMoves);
+        console.log('OpenAI final move:', move?.san || 'null');
+        return move;
+      } catch (parseError) {
+        console.log('OpenAI JSON parse error:', parseError);
+        console.log('Raw content that failed to parse:', content);
+        return null;
+      }
     } catch (error) {
       console.error('OpenAI API error:', error);
       return null;
