@@ -1,0 +1,1330 @@
+openapi: 3.1.0
+info:
+  title: Chess Learning App API
+  description: |
+    RESTful API for the Chess Learning App, providing user authentication, 
+    AI-powered chess analysis, progress tracking, and educational content management.
+  version: 1.0.0
+  contact:
+    name: Chess Learning App Support
+    url: https://chess-learning.replit.app
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000/api
+    description: Development server
+  - url: https://chess-learning-staging.replit.app/api  
+    description: Staging server
+  - url: https://chess-learning.replit.app/api
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: Users
+    description: User profile and settings management
+  - name: Chess AI
+    description: AI-powered chess analysis and move generation
+  - name: Learning
+    description: Lessons, progress tracking, and educational content
+  - name: Games
+    description: Game management and result tracking
+  - name: Onboarding
+    description: User onboarding and skill assessment
+
+paths:
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register new user account
+      description: Creates a new user account and returns authentication session
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              newUser:
+                summary: New user registration
+                value:
+                  username: "chessmaster"
+                  email: "player@example.com"
+                  password: "SecurePass123!"
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate user
+      description: Authenticates user credentials and creates session
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              existingUser:
+                summary: User login
+                value:
+                  email: "player@example.com"
+                  password: "SecurePass123!"
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: End user session
+      description: Destroys current user session
+      operationId: logoutUser
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user profile
+      description: Returns authenticated user's profile information
+      operationId: getCurrentUser
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /user/progress:
+    get:
+      tags: [Users]
+      summary: Get user progress analytics
+      description: Returns comprehensive progress analytics and learning recommendations
+      operationId: getUserProgress
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Progress data retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /user/{id}:
+    patch:
+      tags: [Users]
+      summary: Update user profile
+      description: Updates user profile information
+      operationId: updateUser
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /user/{id}/settings:
+    get:
+      tags: [Users]
+      summary: Get user settings
+      description: Returns user preferences and settings
+      operationId: getUserSettings
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      responses:
+        '200':
+          description: Settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettings'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    
+    patch:
+      tags: [Users]
+      summary: Update user settings
+      description: Updates user preferences and settings
+      operationId: updateUserSettings
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettingsUpdate'
+      responses:
+        '200':
+          description: Settings updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettings'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /ai/move:
+    post:
+      tags: [Chess AI]
+      summary: Get AI chess move
+      description: Returns the best move recommendation from AI engine
+      operationId: getAIMove
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIMoveRequest'
+            examples:
+              openingPosition:
+                summary: Opening position
+                value:
+                  fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+                  difficulty: "intermediate"
+                  useOllama: true
+      responses:
+        '200':
+          description: AI move generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIMoveResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '502':
+          $ref: '#/components/responses/ServiceUnavailableError'
+
+  /ai/hint:
+    post:
+      tags: [Chess AI]
+      summary: Get move hints
+      description: Returns strategic hints and move suggestions
+      operationId: getAIHint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIHintRequest'
+      responses:
+        '200':
+          description: Hints generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIHintResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+
+  /move/evaluate:
+    post:
+      tags: [Chess AI]
+      summary: Evaluate chess move
+      description: Provides detailed analysis and evaluation of a chess move
+      operationId: evaluateMove
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveEvaluationRequest'
+      responses:
+        '200':
+          description: Move evaluation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoveEvaluationResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /lessons:
+    get:
+      tags: [Learning]
+      summary: List available lessons
+      description: Returns paginated list of available chess lessons
+      operationId: getLessons
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+            enum: [beginner, intermediate, advanced]
+          description: Filter by difficulty level
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of items per page
+        - name: cursor
+          in: query
+          schema:
+            type: string
+          description: Pagination cursor
+      responses:
+        '200':
+          description: Lessons retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonsListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /lessons/{id}:
+    get:
+      tags: [Learning]
+      summary: Get lesson content
+      description: Returns detailed lesson content and structure
+      operationId: getLesson
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Lesson ID
+      responses:
+        '200':
+          description: Lesson content retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /lessons/{id}/progress:
+    post:
+      tags: [Learning]
+      summary: Update lesson progress
+      description: Records user progress on a specific lesson
+      operationId: updateLessonProgress
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Lesson ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LessonProgressUpdate'
+      responses:
+        '200':
+          description: Progress updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonProgress'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /game/complete:
+    post:
+      tags: [Games]
+      summary: Store completed game
+      description: Records a completed chess game for progress tracking
+      operationId: storeCompletedGame
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameCompletionRequest'
+            examples:
+              winGame:
+                summary: Won game
+                value:
+                  result: "win"
+                  moves: "e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 Nb8 d4 Nbd7"
+                  opponent: "Computer"
+                  eloChange: 15
+      responses:
+        '200':
+          description: Game stored successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameCompletionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /onboarding/puzzles:
+    get:
+      tags: [Onboarding]
+      summary: Get assessment puzzles
+      description: Returns chess puzzles for ELO assessment during onboarding
+      operationId: getAssessmentPuzzles
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Assessment puzzles retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PuzzlesResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /onboarding/puzzle-attempt:
+    post:
+      tags: [Onboarding]
+      summary: Submit puzzle solution
+      description: Records user's attempt at solving an assessment puzzle
+      operationId: submitPuzzleAttempt
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PuzzleAttemptRequest'
+      responses:
+        '200':
+          description: Puzzle attempt recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PuzzleAttemptResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /onboarding/complete:
+    post:
+      tags: [Onboarding]
+      summary: Complete onboarding process
+      description: Finalizes onboarding and calculates initial ELO rating
+      operationId: completeOnboarding
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Onboarding completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingCompletionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+components:
+  securitySchemes:
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: connect.sid
+      description: Session-based authentication using HTTP-only cookies
+
+  schemas:
+    # Authentication Schemas
+    RegisterRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: '^[a-zA-Z0-9_-]+$'
+          description: Unique username (alphanumeric, underscore, hyphen)
+        email:
+          type: string
+          format: email
+          description: Valid email address
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: Password (minimum 8 characters)
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+        password:
+          type: string
+          description: User's password
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        message:
+          type: string
+          example: "Authentication successful"
+
+    UserProfileResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+
+    # User Schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique user identifier
+        username:
+          type: string
+          description: User's display name
+        email:
+          type: string
+          format: email
+          description: User's email address
+        eloRating:
+          type: integer
+          minimum: 600
+          maximum: 3000
+          description: Current ELO chess rating
+        isEloCalibrated:
+          type: boolean
+          description: Whether ELO has been initially calibrated
+        onboardingCompleted:
+          type: boolean
+          description: Whether user has completed onboarding
+        gamesWon:
+          type: integer
+          minimum: 0
+          description: Total games won
+        puzzlesSolved:
+          type: integer
+          minimum: 0
+          description: Total puzzles solved
+        lessonsCompleted:
+          type: integer
+          minimum: 0
+          description: Total lessons completed
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        email:
+          type: string
+          format: email
+
+    UserSettings:
+      type: object
+      properties:
+        hintsEnabled:
+          type: boolean
+          description: Whether to show hints during games
+        focusMode:
+          type: boolean
+          description: Distraction-free gaming mode
+        progressTracking:
+          type: boolean
+          description: Enable progress analytics
+        dailyPlayTime:
+          type: integer
+          minimum: 5
+          maximum: 180
+          description: Daily play time goal in minutes
+        breakReminders:
+          type: integer
+          minimum: 5
+          maximum: 60
+          description: Break reminder interval in minutes
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          description: Preferred game difficulty
+        autoAdjustDifficulty:
+          type: boolean
+          description: Automatically adjust difficulty based on performance
+
+    UserSettingsUpdate:
+      type: object
+      properties:
+        hintsEnabled:
+          type: boolean
+        focusMode:
+          type: boolean
+        progressTracking:
+          type: boolean
+        dailyPlayTime:
+          type: integer
+          minimum: 5
+          maximum: 180
+        breakReminders:
+          type: integer
+          minimum: 5
+          maximum: 60
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        autoAdjustDifficulty:
+          type: boolean
+
+    # Progress Schemas
+    ProgressResponse:
+      type: object
+      properties:
+        hasData:
+          type: boolean
+          description: Whether user has progress data
+        currentElo:
+          type: integer
+          description: Current ELO rating
+        eloChange:
+          type: integer
+          description: Recent ELO change
+        gamesPlayed:
+          type: integer
+          description: Total games played
+        winRate:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Win rate percentage
+        message:
+          type: string
+          description: Encouraging message for new users
+        skillAreas:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillArea'
+        recentPerformance:
+          type: array
+          items:
+            $ref: '#/components/schemas/GamePerformance'
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/LearningRecommendation'
+
+    SkillArea:
+      type: object
+      properties:
+        area:
+          type: string
+          description: Skill area name
+        currentLevel:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Current proficiency level
+        trend:
+          type: string
+          enum: [improving, stable, declining]
+          description: Recent performance trend
+        practiceCount:
+          type: integer
+          description: Number of practice sessions
+        successRate:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Success rate percentage
+        description:
+          type: string
+          description: Skill area description
+
+    GamePerformance:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          description: Game date
+        opponent:
+          type: string
+          description: Opponent name or type
+        result:
+          type: string
+          enum: [win, loss, draw]
+          description: Game result
+        eloChange:
+          type: integer
+          description: ELO change from this game
+        movesPlayed:
+          type: integer
+          description: Number of moves in the game
+
+    LearningRecommendation:
+      type: object
+      properties:
+        area:
+          type: string
+          description: Recommended focus area
+        priority:
+          type: string
+          enum: [high, medium, low]
+          description: Recommendation priority
+        description:
+          type: string
+          description: Recommendation description
+        actionItems:
+          type: array
+          items:
+            type: string
+          description: Specific actions to take
+        estimatedEloGain:
+          type: integer
+          description: Estimated ELO improvement
+
+    # AI Schemas
+    AIMoveRequest:
+      type: object
+      required: [fen]
+      properties:
+        fen:
+          type: string
+          pattern: '^[rnbqkpRNBQKP1-8\/\s\-KQkq]+$'
+          description: Chess position in FEN notation
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          default: beginner
+          description: AI difficulty level
+        useOllama:
+          type: boolean
+          default: true
+          description: Whether to use Ollama AI engine
+
+    AIMoveResponse:
+      type: object
+      properties:
+        move:
+          $ref: '#/components/schemas/ChessMove'
+        san:
+          type: string
+          description: Move in Standard Algebraic Notation
+        difficulty:
+          type: string
+          description: AI difficulty used
+        engine:
+          type: string
+          enum: [openai, ollama, traditional]
+          description: AI engine that generated the move
+
+    AIHintRequest:
+      type: object
+      required: [fen]
+      properties:
+        fen:
+          type: string
+          description: Chess position in FEN notation
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          default: beginner
+        useOllama:
+          type: boolean
+          default: true
+
+    AIHintResponse:
+      type: object
+      properties:
+        hints:
+          type: array
+          items:
+            type: string
+          description: Strategic hints and suggestions
+        bestMove:
+          $ref: '#/components/schemas/ChessMove'
+        difficulty:
+          type: string
+          description: Difficulty level used
+
+    ChessMove:
+      type: object
+      properties:
+        from:
+          type: string
+          pattern: '^[a-h][1-8]$'
+          description: Source square (e.g., e2)
+        to:
+          type: string
+          pattern: '^[a-h][1-8]$'
+          description: Destination square (e.g., e4)
+        promotion:
+          type: string
+          enum: [q, r, b, n]
+          nullable: true
+          description: Promotion piece for pawn promotion
+
+    MoveEvaluationRequest:
+      type: object
+      required: [fen, move]
+      properties:
+        fen:
+          type: string
+          description: Chess position before the move
+        move:
+          $ref: '#/components/schemas/ChessMove'
+        gameHistory:
+          type: array
+          items:
+            type: string
+          description: Previous moves in algebraic notation
+
+    MoveEvaluationResponse:
+      type: object
+      properties:
+        evaluation:
+          $ref: '#/components/schemas/MoveEvaluation'
+        timestamp:
+          type: string
+          format: date-time
+          description: Evaluation timestamp
+
+    MoveEvaluation:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Human-readable evaluation summary
+        moveType:
+          type: string
+          enum: [excellent, good, inaccuracy, mistake, blunder]
+          description: Move classification
+        explanation:
+          type: string
+          description: Detailed move explanation
+        tactical:
+          type: array
+          items:
+            type: string
+          description: Tactical observations
+        strategic:
+          type: array
+          items:
+            type: string
+          description: Strategic observations
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Move quality rating
+
+    # Learning Schemas
+    LessonsListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LessonSummary'
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    LessonSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Lesson identifier
+        title:
+          type: string
+          description: Lesson title
+        description:
+          type: string
+          description: Brief lesson description
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          description: Lesson difficulty level
+        estimatedTime:
+          type: string
+          description: Estimated completion time
+        completed:
+          type: boolean
+          description: Whether user has completed this lesson
+
+    Lesson:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        content:
+          $ref: '#/components/schemas/LessonContent'
+        order:
+          type: integer
+          description: Lesson sequence order
+
+    LessonContent:
+      type: object
+      properties:
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/LessonSection'
+        objectives:
+          type: array
+          items:
+            type: string
+          description: Learning objectives
+        difficulty:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Difficulty rating
+        estimatedTime:
+          type: string
+          description: Estimated completion time
+
+    LessonSection:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Section title
+        type:
+          type: string
+          enum: [explanation, interactive, quiz]
+          description: Section type
+        content:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/InteractiveContent'
+          description: Section content
+
+    InteractiveContent:
+      type: object
+      properties:
+        fen:
+          type: string
+          description: Chess position for interactive sections
+        instruction:
+          type: string
+          description: User instruction
+        correctMoves:
+          type: array
+          items:
+            type: string
+          description: Accepted correct moves
+        hints:
+          type: array
+          items:
+            type: string
+          description: Available hints
+
+    LessonProgressUpdate:
+      type: object
+      properties:
+        completed:
+          type: boolean
+          description: Whether lesson is completed
+        score:
+          type: number
+          minimum: 0
+          maximum: 100
+          nullable: true
+          description: Lesson score percentage
+        timeSpent:
+          type: integer
+          minimum: 0
+          description: Time spent in seconds
+
+    LessonProgress:
+      type: object
+      properties:
+        userId:
+          type: integer
+        lessonId:
+          type: integer
+        completed:
+          type: boolean
+        score:
+          type: number
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    # Game Schemas
+    GameCompletionRequest:
+      type: object
+      required: [result, moves]
+      properties:
+        result:
+          type: string
+          enum: [win, loss, draw]
+          description: Game outcome
+        moves:
+          type: string
+          description: Complete game moves in algebraic notation
+        opponent:
+          type: string
+          default: "Computer"
+          description: Opponent identifier
+        eloChange:
+          type: integer
+          default: 0
+          description: ELO rating change
+
+    GameCompletionResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Game stored successfully"
+        gameId:
+          type: integer
+          description: Stored game identifier
+
+    # Onboarding Schemas
+    PuzzlesResponse:
+      type: object
+      properties:
+        puzzles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Puzzle'
+
+    Puzzle:
+      type: object
+      properties:
+        id:
+          type: integer
+        fen:
+          type: string
+          description: Puzzle position
+        solution:
+          type: string
+          description: Correct solution move
+        rating:
+          type: integer
+          description: Puzzle difficulty rating
+        theme:
+          type: string
+          description: Puzzle theme or pattern
+
+    PuzzleAttemptRequest:
+      type: object
+      required: [puzzleId, solved]
+      properties:
+        puzzleId:
+          type: integer
+          description: Puzzle identifier
+        solved:
+          type: boolean
+          description: Whether puzzle was solved correctly
+        timeSpent:
+          type: integer
+          minimum: 0
+          description: Time spent solving in seconds
+        attemptedMoves:
+          type: array
+          items:
+            type: string
+          description: Moves attempted by user
+
+    PuzzleAttemptResponse:
+      type: object
+      properties:
+        correct:
+          type: boolean
+          description: Whether attempt was correct
+        explanation:
+          type: string
+          description: Solution explanation
+        rating:
+          type: integer
+          description: Puzzle rating
+
+    OnboardingCompletionResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Onboarding completed"
+        user:
+          $ref: '#/components/schemas/User'
+        recommendedLessons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LessonSummary'
+        assessment:
+          $ref: '#/components/schemas/AssessmentResult'
+
+    AssessmentResult:
+      type: object
+      properties:
+        estimatedElo:
+          type: integer
+          description: Calculated initial ELO rating
+        skillLevel:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          description: Assessed skill level
+        strengths:
+          type: array
+          items:
+            type: string
+          description: Identified strengths
+        improvementAreas:
+          type: array
+          items:
+            type: string
+          description: Areas for improvement
+
+    # Utility Schemas
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Response message
+
+    PaginationInfo:
+      type: object
+      properties:
+        hasMore:
+          type: boolean
+          description: Whether more results are available
+        nextCursor:
+          type: string
+          nullable: true
+          description: Cursor for next page
+        limit:
+          type: integer
+          description: Current page size
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Error message
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          description: Detailed validation errors
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+
+    ValidationError:
+      type: object
+      properties:
+        field:
+          type: string
+          description: Field name with error
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+
+  responses:
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Validation failed"
+            errors:
+              - field: "email"
+                code: "INVALID_FORMAT"
+                message: "Invalid email format"
+            timestamp: "2024-01-15T10:30:00Z"
+
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Authentication required"
+            timestamp: "2024-01-15T10:30:00Z"
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Resource not found"
+            timestamp: "2024-01-15T10:30:00Z"
+
+    ConflictError:
+      description: Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "User already exists with this email"
+            timestamp: "2024-01-15T10:30:00Z"
+
+    RateLimitError:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Rate limit exceeded"
+            timestamp: "2024-01-15T10:30:00Z"
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per time window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in time window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Time when rate limit resets (Unix timestamp)
+
+    ServiceUnavailableError:
+      description: External service unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "AI service temporarily unavailable"
+            timestamp: "2024-01-15T10:30:00Z"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Internal server error"
+            timestamp: "2024-01-15T10:30:00Z"
