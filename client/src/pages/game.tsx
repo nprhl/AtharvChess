@@ -6,6 +6,7 @@ import PromotionDialog from "@/components/promotion-dialog";
 import GameSettingsDialog from "@/components/game-settings-dialog";
 import { useStockfishMoveEvaluation } from "../hooks/useStockfishMoveEvaluation";
 import { useChessGame } from "@/hooks/use-chess-game";
+import { useEffect, useCallback } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
 import { 
@@ -58,24 +59,28 @@ export default function GamePage() {
     playerColor: settings.playerColor
   });
 
-  // Use Stockfish for move evaluation instead of the basic API
-  const [stockfishEvaluation, setStockfishEvaluation] = useState<any>(null);
-  const [showStockfishEvaluation, setShowStockfishEvaluation] = useState(false);
-  const [lastMoveSan, setLastMoveSan] = useState<string>('');
+  // Simple Stockfish integration for move feedback  
+  const [showMoveEvaluation, setShowMoveEvaluation] = useState(false);
+  const [lastMoveSan, setLastMoveSan] = useState('');
   
-  const { evaluation: currentStockfishEval, isAnalyzing } = useStockfishMoveEvaluation({
+  const { evaluation, isAnalyzing } = useStockfishMoveEvaluation({
     fen: game.fen(),
-    onEvaluationReady: (evaluation) => {
-      if (moveHistory.length > 0) { // Only show evaluation after actual moves
-        setStockfishEvaluation(evaluation);
-        setLastMoveSan(moveHistory[moveHistory.length - 1] || '');
-        setShowStockfishEvaluation(true);
-      }
-    }
+    lastMoveSan
   });
 
-  const dismissStockfishEvaluation = () => {
-    setShowStockfishEvaluation(false);
+  // Update move SAN when history changes
+  useEffect(() => {
+    if (moveHistory.length > 0) {
+      const lastMove = moveHistory[moveHistory.length - 1];
+      if (lastMove && lastMove.san && lastMove.san !== lastMoveSan) {
+        setLastMoveSan(lastMove.san);
+        setShowMoveEvaluation(true);
+      }
+    }
+  }, [moveHistory, lastMoveSan]);
+
+  const dismissMoveEvaluation = () => {
+    setShowMoveEvaluation(false);
   };
   
   const [showHint, setShowHint] = useState(false);
@@ -280,10 +285,10 @@ export default function GamePage() {
 
       {/* Stockfish Move Evaluation Display */}
       <MoveEvaluationDisplay
-        evaluation={stockfishEvaluation}
+        evaluation={evaluation}
         moveSan={lastMoveSan}
-        onDismiss={dismissStockfishEvaluation}
-        isVisible={showStockfishEvaluation}
+        onDismiss={dismissMoveEvaluation}
+        isVisible={showMoveEvaluation && evaluation !== null}
       />
 
       {/* Pawn Promotion Dialog */}
