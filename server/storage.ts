@@ -1,5 +1,6 @@
 import { 
   users, games, lessons, userLessonProgress, settings, puzzles, puzzleAttempts,
+  dailyTips, userTipProgress,
   type User, type InsertUser, type Game, type InsertGame,
   type Lesson, type InsertLesson, type UserLessonProgress, 
   type InsertUserLessonProgress, type Settings, type InsertSettings,
@@ -42,12 +43,25 @@ export interface IStorage {
   // Settings
   getUserSettings(userId: number): Promise<Settings | undefined>;
   updateUserSettings(userId: number, settings: Partial<InsertSettings>): Promise<Settings>;
+
+  // Daily Tips
+  getTodaysTip(difficulty?: string): Promise<any>;
+  getTipById(id: number): Promise<any>;
+  getTipsByCategory(category: string, difficulty?: string): Promise<any[]>;
+  getRecentTips(limit?: number): Promise<any[]>;
+  markTipAsViewed(userId: number, tipId: number): Promise<void>;
+  markTipAsCompleted(userId: number, tipId: number): Promise<void>;
+  bookmarkTip(userId: number, tipId: number, bookmarked: boolean): Promise<void>;
+  rateTip(userId: number, tipId: number, rating: number): Promise<void>;
+  getUserTipProgress(userId: number): Promise<any[]>;
+  getUserBookmarkedTips(userId: number): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
   constructor() {
-    // Initialize with default lessons
+    // Initialize with default content
     this.initializeDefaultLessons();
+    this.initializeDefaultTips();
   }
 
   private async initializeDefaultLessons() {
@@ -531,6 +545,263 @@ export class DatabaseStorage implements IStorage {
       .values(insertAttempt)
       .returning();
     return attempt;
+  }
+
+  // Daily Tips Implementation
+  async getTodaysTip(difficulty?: string): Promise<any> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let whereConditions = [eq(dailyTips.isActive, true)];
+    
+    if (difficulty) {
+      whereConditions.push(eq(dailyTips.difficulty, difficulty));
+    }
+
+    const tips = await db.select()
+      .from(dailyTips)
+      .where(and(...whereConditions))
+      .orderBy(dailyTips.publishDate)
+      .limit(1);
+      
+    return tips[0] || null;
+  }
+
+  async getTipById(id: number): Promise<any> {
+    const [tip] = await db.select().from(dailyTips).where(eq(dailyTips.id, id));
+    return tip || null;
+  }
+
+  async getTipsByCategory(category: string, difficulty?: string): Promise<any[]> {
+    let whereConditions = [
+      eq(dailyTips.category, category),
+      eq(dailyTips.isActive, true)
+    ];
+
+    if (difficulty) {
+      whereConditions.push(eq(dailyTips.difficulty, difficulty));
+    }
+
+    return await db.select()
+      .from(dailyTips)
+      .where(and(...whereConditions))
+      .orderBy(desc(dailyTips.publishDate));
+  }
+
+  async getRecentTips(limit: number = 10): Promise<any[]> {
+    return await db.select()
+      .from(dailyTips)
+      .where(eq(dailyTips.isActive, true))
+      .orderBy(desc(dailyTips.publishDate))
+      .limit(limit);
+  }
+
+  async markTipAsViewed(userId: number, tipId: number): Promise<void> {
+    const [existing] = await db.select()
+      .from(userTipProgress)
+      .where(and(
+        eq(userTipProgress.userId, userId),
+        eq(userTipProgress.tipId, tipId)
+      ));
+
+    if (!existing) {
+      await db.insert(userTipProgress).values({
+        userId,
+        tipId,
+        completed: false,
+        bookmarked: false,
+      });
+    }
+  }
+
+  async markTipAsCompleted(userId: number, tipId: number): Promise<void> {
+    const [existing] = await db.select()
+      .from(userTipProgress)
+      .where(and(
+        eq(userTipProgress.userId, userId),
+        eq(userTipProgress.tipId, tipId)
+      ));
+
+    if (existing) {
+      await db.update(userTipProgress)
+        .set({ 
+          completed: true, 
+          completedAt: new Date() 
+        })
+        .where(and(
+          eq(userTipProgress.userId, userId),
+          eq(userTipProgress.tipId, tipId)
+        ));
+    } else {
+      await db.insert(userTipProgress).values({
+        userId,
+        tipId,
+        completed: true,
+        completedAt: new Date(),
+        bookmarked: false,
+      });
+    }
+  }
+
+  async bookmarkTip(userId: number, tipId: number, bookmarked: boolean): Promise<void> {
+    const [existing] = await db.select()
+      .from(userTipProgress)
+      .where(and(
+        eq(userTipProgress.userId, userId),
+        eq(userTipProgress.tipId, tipId)
+      ));
+
+    if (existing) {
+      await db.update(userTipProgress)
+        .set({ bookmarked })
+        .where(and(
+          eq(userTipProgress.userId, userId),
+          eq(userTipProgress.tipId, tipId)
+        ));
+    } else {
+      await db.insert(userTipProgress).values({
+        userId,
+        tipId,
+        completed: false,
+        bookmarked,
+      });
+    }
+  }
+
+  async rateTip(userId: number, tipId: number, rating: number): Promise<void> {
+    const [existing] = await db.select()
+      .from(userTipProgress)
+      .where(and(
+        eq(userTipProgress.userId, userId),
+        eq(userTipProgress.tipId, tipId)
+      ));
+
+    if (existing) {
+      await db.update(userTipProgress)
+        .set({ rating })
+        .where(and(
+          eq(userTipProgress.userId, userId),
+          eq(userTipProgress.tipId, tipId)
+        ));
+    } else {
+      await db.insert(userTipProgress).values({
+        userId,
+        tipId,
+        completed: false,
+        bookmarked: false,
+        rating,
+      });
+    }
+  }
+
+  async getUserTipProgress(userId: number): Promise<any[]> {
+    return await db.select({
+      id: userTipProgress.id,
+      tipId: userTipProgress.tipId,
+      completed: userTipProgress.completed,
+      bookmarked: userTipProgress.bookmarked,
+      rating: userTipProgress.rating,
+      viewedAt: userTipProgress.viewedAt,
+      completedAt: userTipProgress.completedAt,
+      title: dailyTips.title,
+      category: dailyTips.category,
+      difficulty: dailyTips.difficulty,
+      estimatedReadTime: dailyTips.estimatedReadTime,
+    })
+    .from(userTipProgress)
+    .innerJoin(dailyTips, eq(userTipProgress.tipId, dailyTips.id))
+    .where(eq(userTipProgress.userId, userId))
+    .orderBy(desc(userTipProgress.viewedAt));
+  }
+
+  async getUserBookmarkedTips(userId: number): Promise<any[]> {
+    return await db.select({
+      id: dailyTips.id,
+      title: dailyTips.title,
+      content: dailyTips.content,
+      category: dailyTips.category,
+      difficulty: dailyTips.difficulty,
+      fen: dailyTips.fen,
+      moves: dailyTips.moves,
+      estimatedReadTime: dailyTips.estimatedReadTime,
+      tags: dailyTips.tags,
+      publishDate: dailyTips.publishDate,
+      bookmarkedAt: userTipProgress.viewedAt,
+    })
+    .from(userTipProgress)
+    .innerJoin(dailyTips, eq(userTipProgress.tipId, dailyTips.id))
+    .where(and(
+      eq(userTipProgress.userId, userId),
+      eq(userTipProgress.bookmarked, true)
+    ))
+    .orderBy(desc(userTipProgress.viewedAt));
+  }
+
+  private async initializeDefaultTips() {
+    const existingTips = await this.getRecentTips(1);
+    if (existingTips.length > 0) {
+      return; // Tips already exist
+    }
+
+    const defaultTips = [
+      {
+        title: "Control the Center",
+        content: "The center squares (e4, e5, d4, d5) are the most important on the chessboard. Controlling them with pawns and pieces gives you more mobility and attacking chances. Think of the center as the highway of the chessboard - whoever controls it controls the game's tempo.",
+        category: "strategy",
+        difficulty: "beginner",
+        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        moves: [{"from": "e2", "to": "e4"}, {"from": "e7", "to": "e5"}, {"from": "d2", "to": "d4"}, {"from": "d7", "to": "d6"}],
+        estimatedReadTime: 30,
+        tags: ["center", "strategy", "opening"],
+        publishDate: new Date("2025-08-12"),
+      },
+      {
+        title: "Knight Forks Win Material",
+        content: "A knight fork attacks two or more pieces simultaneously. Look for opportunities to place your knight where it can attack the enemy king and another valuable piece. The L-shaped movement of knights makes them perfect for creating these devastating tactical shots.",
+        category: "tactics",
+        difficulty: "beginner",
+        fen: "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 1",
+        moves: [{"from": "f3", "to": "e5"}, {"from": "c6", "to": "e5"}],
+        estimatedReadTime: 25,
+        tags: ["tactics", "knight", "fork"],
+        publishDate: new Date("2025-08-13"),
+      },
+      {
+        title: "Opposition in King and Pawn Endgames",
+        content: "In king and pawn endgames, having the 'opposition' means your king faces the opponent's king with one square between them, and it's their turn to move. This forces their king to give way, allowing you to advance and promote your pawn.",
+        category: "endgame",
+        difficulty: "intermediate",
+        fen: "8/8/8/3k4/3P4/3K4/8/8 w - - 0 1",
+        moves: [{"from": "d3", "to": "d2"}],
+        estimatedReadTime: 35,
+        tags: ["endgame", "opposition", "king"],
+        publishDate: new Date("2025-08-14"),
+      },
+      {
+        title: "Develop Knights Before Bishops",
+        content: "Knights have only one good square in the opening, while bishops have multiple options. Develop your knights to f3 and c3 (for White) early to control the center and prepare for castling. This principle helps you avoid blocking in your bishops.",
+        category: "opening",
+        difficulty: "beginner",
+        fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+        moves: [{"from": "g1", "to": "f3"}, {"from": "b1", "to": "c3"}],
+        estimatedReadTime: 28,
+        tags: ["opening", "development", "knights"],
+        publishDate: new Date("2025-08-15"),
+      },
+      {
+        title: "Think Before You Move",
+        content: "Chess is won and lost in the mind. Before each move, ask yourself: What is my opponent threatening? What are my candidate moves? What will happen after I play this move? Taking just 10 extra seconds to think can prevent blunders and find better moves.",
+        category: "psychology",
+        difficulty: "beginner",
+        estimatedReadTime: 20,
+        tags: ["thinking", "process", "improvement"],
+        publishDate: new Date("2025-08-16"),
+      }
+    ];
+
+    for (const tip of defaultTips) {
+      await db.insert(dailyTips).values(tip);
+    }
   }
 }
 

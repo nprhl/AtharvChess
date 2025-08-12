@@ -10,6 +10,7 @@ import LessonsPage from "@/pages/lessons";
 import LessonDetailPage from "@/pages/lesson-detail";
 import ProgressPage from "@/pages/progress";
 import SettingsPage from "@/pages/settings";
+import TipsPage from "@/pages/tips";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import OnboardingPage from "@/pages/onboarding";
@@ -58,6 +59,7 @@ function Router() {
           <Route path="/" component={GamePage} />
           <Route path="/lessons" component={LessonsPage} />
           <Route path="/lesson/:id" component={LessonDetailPage} />
+          <Route path="/tips" component={TipsPage} />
           <Route path="/progress" component={ProgressPage} />
           <Route path="/settings" component={SettingsPage} />
           <Route component={NotFound} />

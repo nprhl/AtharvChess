@@ -139,6 +139,34 @@ export const settings = pgTable("settings", {
   autoAdjustDifficulty: boolean("auto_adjust_difficulty").notNull().default(true),
 });
 
+// Daily chess tips for micro-learning
+export const dailyTips = pgTable("daily_tips", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  category: text("category").notNull(), // 'opening', 'tactics', 'endgame', 'strategy', 'psychology'
+  difficulty: text("difficulty").notNull(), // 'beginner', 'intermediate', 'advanced'
+  fen: text("fen"), // Optional chess position to demonstrate the tip
+  moves: jsonb("moves"), // Optional sequence of moves to illustrate
+  estimatedReadTime: integer("estimated_read_time").notNull(), // seconds
+  tags: text("tags").array(), // searchable tags
+  isActive: boolean("is_active").notNull().default(true),
+  publishDate: timestamp("publish_date").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// User interactions with daily tips
+export const userTipProgress = pgTable("user_tip_progress", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  tipId: integer("tip_id").references(() => dailyTips.id),
+  viewedAt: timestamp("viewed_at").notNull().defaultNow(),
+  completed: boolean("completed").notNull().default(false),
+  bookmarked: boolean("bookmarked").notNull().default(false),
+  rating: integer("rating"), // 1-5 stars user rating
+  completedAt: timestamp("completed_at"),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -174,6 +202,17 @@ export const insertEngineEvalSchema = createInsertSchema(engineEvals).omit({
 
 export const insertSettingsSchema = createInsertSchema(settings).omit({
   id: true,
+});
+
+export const insertDailyTipSchema = createInsertSchema(dailyTips).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserTipProgressSchema = createInsertSchema(userTipProgress).omit({
+  id: true,
+  viewedAt: true,
+  completedAt: true,
 });
 
 // Authentication schemas
@@ -240,6 +279,21 @@ export const settingsRelations = relations(settings, ({ one }) => ({
   user: one(users, {
     fields: [settings.userId],
     references: [users.id],
+  }),
+}));
+
+export const dailyTipsRelations = relations(dailyTips, ({ many }) => ({
+  userProgress: many(userTipProgress),
+}));
+
+export const userTipProgressRelations = relations(userTipProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [userTipProgress.userId],
+    references: [users.id],
+  }),
+  tip: one(dailyTips, {
+    fields: [userTipProgress.tipId],
+    references: [dailyTips.id],
   }),
 }));
 

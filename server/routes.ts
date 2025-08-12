@@ -4,6 +4,7 @@ import passport from "passport";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, getCurrentUser, hashPassword } from "./auth";
 import { puzzleService } from "./puzzle-service";
+import { tipService } from "./tip-service";
 import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema } from "@shared/schema";
 import { z } from "zod";
 import { ChessAI, type Difficulty } from "./chess-ai";
@@ -670,6 +671,101 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     
     const text = await callGpt(prompt);
     res.json({ explanation: text });
+  });
+
+  // Daily Tips Routes
+  app.get("/api/tips/today", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const tip = await tipService.getTodaysTipForUser(user.id);
+      
+      if (!tip) {
+        return res.status(404).json({ message: "No tip available for today" });
+      }
+      
+      res.json(tip);
+    } catch (error) {
+      console.error("Error fetching today's tip:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/tips/category/:category", requireAuth, async (req, res) => {
+    try {
+      const { category } = req.params;
+      const user = req.user as any;
+      const tips = await tipService.getTipsByCategory(category, user.id);
+      res.json(tips);
+    } catch (error) {
+      console.error("Error fetching tips by category:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/tips/:id/complete", requireAuth, async (req, res) => {
+    try {
+      const tipId = parseInt(req.params.id);
+      const user = req.user as any;
+      
+      await tipService.markTipCompleted(user.id, tipId);
+      res.json({ message: "Tip marked as completed" });
+    } catch (error) {
+      console.error("Error completing tip:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/tips/:id/bookmark", requireAuth, async (req, res) => {
+    try {
+      const tipId = parseInt(req.params.id);
+      const user = req.user as any;
+      
+      const isBookmarked = await tipService.toggleBookmark(user.id, tipId);
+      res.json({ bookmarked: isBookmarked });
+    } catch (error) {
+      console.error("Error bookmarking tip:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/tips/:id/rate", requireAuth, async (req, res) => {
+    try {
+      const tipId = parseInt(req.params.id);
+      const { rating } = req.body;
+      const user = req.user as any;
+      
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Rating must be between 1 and 5" });
+      }
+      
+      await tipService.rateTip(user.id, tipId, rating);
+      res.json({ message: "Tip rated successfully" });
+    } catch (error) {
+      console.error("Error rating tip:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/tips/bookmarks", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const bookmarks = await tipService.getUserBookmarks(user.id);
+      res.json(bookmarks);
+    } catch (error) {
+      console.error("Error fetching bookmarks:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/tips/stats", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const stats = await tipService.getUserStats(user.id);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching tip stats:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   const httpServer = createServer(app);

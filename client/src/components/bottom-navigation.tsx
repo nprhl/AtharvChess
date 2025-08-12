@@ -1,10 +1,11 @@
 import { useLocation } from "wouter";
 import { Link } from "wouter";
-import { Gamepad2, BookOpen, BarChart3, Settings } from "lucide-react";
+import { Gamepad2, BookOpen, Lightbulb, BarChart3, Settings } from "lucide-react";
 
 const navItems = [
   { path: "/", icon: Gamepad2, label: "Play" },
   { path: "/lessons", icon: BookOpen, label: "Lessons" },
+  { path: "/tips", icon: Lightbulb, label: "Tips" },
   { path: "/progress", icon: BarChart3, label: "Progress" },
   { path: "/settings", icon: Settings, label: "Settings" }
 ];
@@ -13,14 +14,14 @@ export default function BottomNavigation() {
   const [location] = useLocation();
 
   return (
-    <nav className="bg-background border-t border-border px-4 py-2">
+    <nav className="bg-background border-t border-border px-2 py-2">
       <div className="flex items-center justify-around">
         {navItems.map(({ path, icon: Icon, label }) => {
           const isActive = location === path;
           
           return (
             <Link key={path} href={path}>
-              <button className={`flex flex-col items-center py-2 px-3 rounded-lg transition-colors ${
+              <button className={`flex flex-col items-center py-2 px-2 rounded-lg transition-colors ${
                 isActive ? 'nav-tab active' : 'nav-tab'
               }`}>
                 <Icon className={`text-lg mb-1 ${
