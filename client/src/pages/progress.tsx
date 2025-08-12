@@ -61,6 +61,25 @@ export default function ProgressPage() {
     );
   }
 
+  // Handle case where user has no progress data yet
+  if (!progressData.hasData) {
+    return (
+      <section className="p-4 space-y-4">
+        <h2 className="text-xl font-bold text-foreground">Your Progress</h2>
+        <Card className="bg-card border-border">
+          <CardContent className="p-6 text-center">
+            <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Ready to Start Your Chess Journey?</h3>
+            <p className="text-muted-foreground mb-4">{progressData.message}</p>
+            <p className="text-sm text-muted-foreground">
+              Play games, solve puzzles, and complete lessons to track your progress and improvement.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
+
   const getEloProgress = (rating: number, target: number) => {
     const range = target - Math.max(600, target - 400); // Dynamic range based on target
     const progress = ((rating - (target - 400)) / range) * 100;
