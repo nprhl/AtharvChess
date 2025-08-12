@@ -31,11 +31,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
   const [currentGameMode] = useState(gameMode);
   const [currentDifficulty] = useState(difficulty);
   const [currentPlayerColor] = useState(playerColor);
-  const [lastMoveEvaluation, setLastMoveEvaluation] = useState<{
-    evaluation: MoveEvaluation;
-    moveSan: string;
-  } | null>(null);
-  const [showEvaluation, setShowEvaluation] = useState(false);
+  // Removed move evaluation state - now handled by Stockfish analysis
   const [promotionPending, setPromotionPending] = useState<{
     from: Square;
     to: Square;
@@ -111,42 +107,9 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     return false;
   }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentDifficulty, currentPlayerColor, isComputerThinking]);
 
-  // Evaluate player's move with AI feedback
-  const evaluatePlayerMove = useCallback(async (moveSan: string, fenBefore: string, fenAfter: string, userElo: number = 1200) => {
-    try {
-      const gameHistory = gameEngine.history.map(m => m.san).join(' ');
-      
-      const response = await fetch('/api/ai/evaluate-move', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          moveSan,
-          fenBefore,
-          fenAfter,
-          gameHistory,
-          userElo,
-          useOllama: true
-        })
-      });
+  // Note: Move evaluation is now handled by Stockfish analysis instead of API calls
 
-      if (response.ok) {
-        const data = await response.json();
-        setLastMoveEvaluation({
-          evaluation: data.evaluation,
-          moveSan
-        });
-        setShowEvaluation(true);
-      }
-    } catch (error) {
-      console.error('Failed to evaluate move:', error);
-    }
-  }, [gameEngine.history]);
-
-  const dismissEvaluation = useCallback(() => {
-    setShowEvaluation(false);
-    // Clear after animation
-    setTimeout(() => setLastMoveEvaluation(null), 300);
-  }, []);
+  // Removed dismissEvaluation - now handled by Stockfish analysis
 
   const makeMove = useCallback((from: Square, to: Square, promotion?: string): boolean => {
     // In computer mode, only allow player moves on their turn
@@ -181,12 +144,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       // Clear any pending promotion
       setPromotionPending(null);
       
-      // Evaluate the player's move with AI feedback
-      if (lastMove && lastMove.san) {
-        // Get user ELO from some context (you might need to pass this in)
-        const userElo = 1200; // Default, could be retrieved from user context
-        evaluatePlayerMove(lastMove.san, fenBefore, fenAfter, userElo);
-      }
+      // Move evaluation is now handled by Stockfish analysis automatically
       
       // Trigger computer move after player move in PvC mode
       if (currentGameMode === 'pvc') {
@@ -196,7 +154,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       }
     }
     return success;
-  }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentPlayerColor, isComputerThinking, makeComputerMove, evaluatePlayerMove]);
+  }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentPlayerColor, isComputerThinking, makeComputerMove]);
 
   const handlePromotion = useCallback((piece: 'q' | 'r' | 'b' | 'n') => {
     if (promotionPending) {
@@ -254,9 +212,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     isComputerThinking,
     gameMode: currentGameMode,
     playerColor: currentPlayerColor,
-    lastMoveEvaluation,
-    showEvaluation,
-    dismissEvaluation,
+    // Move evaluation removed - now handled by Stockfish
     promotionPending,
     handlePromotion,
     cancelPromotion

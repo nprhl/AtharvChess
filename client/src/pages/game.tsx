@@ -4,7 +4,7 @@ import AIHintCard from "@/components/ai-hint-card";
 import MoveEvaluationDisplay from "@/components/move-evaluation";
 import PromotionDialog from "@/components/promotion-dialog";
 import GameSettingsDialog from "@/components/game-settings-dialog";
-import AnalysisPanel from "@/components/AnalysisPanel";
+import { useStockfishMoveEvaluation } from "../hooks/useStockfishMoveEvaluation";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
@@ -49,9 +49,6 @@ export default function GamePage() {
     isComputerThinking,
     gameMode,
     playerColor,
-    lastMoveEvaluation,
-    showEvaluation,
-    dismissEvaluation,
     promotionPending,
     handlePromotion,
     cancelPromotion
@@ -60,6 +57,26 @@ export default function GamePage() {
     difficulty: settings.aiDifficulty,
     playerColor: settings.playerColor
   });
+
+  // Use Stockfish for move evaluation instead of the basic API
+  const [stockfishEvaluation, setStockfishEvaluation] = useState<any>(null);
+  const [showStockfishEvaluation, setShowStockfishEvaluation] = useState(false);
+  const [lastMoveSan, setLastMoveSan] = useState<string>('');
+  
+  const { evaluation: currentStockfishEval, isAnalyzing } = useStockfishMoveEvaluation({
+    fen: game.fen(),
+    onEvaluationReady: (evaluation) => {
+      if (moveHistory.length > 0) { // Only show evaluation after actual moves
+        setStockfishEvaluation(evaluation);
+        setLastMoveSan(moveHistory[moveHistory.length - 1] || '');
+        setShowStockfishEvaluation(true);
+      }
+    }
+  });
+
+  const dismissStockfishEvaluation = () => {
+    setShowStockfishEvaluation(false);
+  };
   
   const [showHint, setShowHint] = useState(false);
   const [currentHint, setCurrentHint] = useState<string | null>(null);
@@ -245,8 +262,7 @@ export default function GamePage() {
           )}
         </div>
 
-        {/* Stockfish Analysis Panel */}
-        <AnalysisPanel fen={game.fen()} />
+
 
         {/* Game Over Message */}
         {isGameOver() && gameOverReason && (
@@ -262,12 +278,12 @@ export default function GamePage() {
         )}
       </div>
 
-      {/* Move Evaluation Display */}
+      {/* Stockfish Move Evaluation Display */}
       <MoveEvaluationDisplay
-        evaluation={lastMoveEvaluation?.evaluation || null}
-        moveSan={lastMoveEvaluation?.moveSan || ""}
-        onDismiss={dismissEvaluation}
-        isVisible={showEvaluation}
+        evaluation={stockfishEvaluation}
+        moveSan={lastMoveSan}
+        onDismiss={dismissStockfishEvaluation}
+        isVisible={showStockfishEvaluation}
       />
 
       {/* Pawn Promotion Dialog */}
