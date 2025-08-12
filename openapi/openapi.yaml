@@ -41,6 +41,7 @@ paths:
       summary: Register new user account
       description: Creates a new user account and returns authentication session
       operationId: registerUser
+      security: []
       requestBody:
         required: true
         content:
@@ -74,6 +75,7 @@ paths:
       summary: Authenticate user
       description: Authenticates user credentials and creates session
       operationId: loginUser
+      security: []
       requestBody:
         required: true
         content:
@@ -106,6 +108,7 @@ paths:
       summary: End user session
       description: Destroys current user session
       operationId: logoutUser
+      security: []
       responses:
         '200':
           description: Logout successful
@@ -113,6 +116,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -252,6 +257,7 @@ paths:
       summary: Get AI chess move
       description: Returns the best move recommendation from AI engine
       operationId: getAIMove
+      security: []
       requestBody:
         required: true
         content:
@@ -262,7 +268,7 @@ paths:
               openingPosition:
                 summary: Opening position
                 value:
-                  fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+                  fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
                   difficulty: "intermediate"
                   useOllama: true
       responses:
@@ -285,6 +291,7 @@ paths:
       summary: Get move hints
       description: Returns strategic hints and move suggestions
       operationId: getAIHint
+      security: []
       requestBody:
         required: true
         content:
@@ -309,6 +316,7 @@ paths:
       summary: Evaluate chess move
       description: Provides detailed analysis and evaluation of a chess move
       operationId: evaluateMove
+      security: []
       requestBody:
         required: true
         content:
@@ -792,7 +800,7 @@ components:
       properties:
         fen:
           type: string
-          pattern: '^[rnbqkpRNBQKP1-8\/\s\-KQkq]+$'
+          pattern: '^[rnbqkpRNBQKP1-8\/\s]+$'
           description: Chess position in FEN notation
         difficulty:
           type: string
@@ -863,7 +871,6 @@ components:
         promotion:
           type: string
           enum: [q, r, b, n]
-          nullable: true
           description: Promotion piece for pawn promotion
 
     MoveEvaluationRequest:
@@ -1039,7 +1046,6 @@ components:
           type: number
           minimum: 0
           maximum: 100
-          nullable: true
           description: Lesson score percentage
         timeSpent:
           type: integer
@@ -1057,11 +1063,9 @@ components:
           type: boolean
         score:
           type: number
-          nullable: true
         completedAt:
           type: string
           format: date-time
-          nullable: true
 
     # Game Schemas
     GameCompletionRequest:
@@ -1206,7 +1210,6 @@ components:
           description: Whether more results are available
         nextCursor:
           type: string
-          nullable: true
           description: Cursor for next page
         limit:
           type: integer
