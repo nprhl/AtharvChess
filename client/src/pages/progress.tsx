@@ -1,335 +1,285 @@
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { Trophy, Puzzle, Flame, CalendarCheck, Crown, Target, BookOpen, TrendingUp, TrendingDown, Minus, ArrowUp } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { Trophy, Puzzle, Flame, CalendarCheck, Crown, Target, BookOpen, TrendingUp, TrendingDown, Clock, Star, Zap } from "lucide-react";
 
 export default function ProgressPage() {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  
-  const { data: progressData, isLoading: progressLoading } = useQuery({
-    queryKey: ["/api/user/progress"],
-    enabled: isAuthenticated && !!user,
-    retry: false,
-  });
-
-  if (isLoading || progressLoading) {
-    return (
-      <section className="p-4 space-y-4">
-        <h2 className="text-xl font-bold text-foreground">Your Progress</h2>
-        <div className="space-y-4">
-          <Skeleton className="h-24 w-full" />
-          <div className="grid grid-cols-2 gap-3">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <section className="p-4 space-y-4">
-        <h2 className="text-xl font-bold text-foreground">Your Progress</h2>
-        <Card className="bg-card border-border">
-          <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground mb-4">Please log in to view your progress</p>
-            <a href="/api/login" className="text-blue-600 hover:underline">
-              Sign In
-            </a>
-          </CardContent>
-        </Card>
-      </section>
-    );
-  }
-
-  if (!progressData) {
-    return (
-      <section className="p-4 space-y-4">
-        <h2 className="text-xl font-bold text-foreground">Your Progress</h2>
-        <Card className="bg-card border-border">
-          <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground">Unable to load progress data</p>
-          </CardContent>
-        </Card>
-      </section>
-    );
-  }
-
-  // Handle case where user has no progress data yet
-  if (!progressData.hasData) {
-    return (
-      <section className="p-4 space-y-4">
-        <h2 className="text-xl font-bold text-foreground">Your Progress</h2>
-        <Card className="bg-card border-border">
-          <CardContent className="p-6 text-center">
-            <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Ready to Start Your Chess Journey?</h3>
-            <p className="text-muted-foreground mb-4">{progressData.message}</p>
-            <p className="text-sm text-muted-foreground">
-              Play games, solve puzzles, and complete lessons to track your progress and improvement.
-            </p>
-          </CardContent>
-        </Card>
-      </section>
-    );
-  }
-
-  const getEloProgress = (rating: number, target: number) => {
-    const range = target - Math.max(600, target - 400); // Dynamic range based on target
-    const progress = ((rating - (target - 400)) / range) * 100;
-    return Math.min(Math.max(progress, 0), 100);
-  };
-
-  const getPlayerLevel = (rating: number) => {
-    if (rating < 1000) return 'Beginner';
-    if (rating < 1200) return 'Novice';
-    if (rating < 1400) return 'Intermediate';
-    if (rating < 1600) return 'Advanced';
-    if (rating < 1800) return 'Expert';
-    if (rating < 2000) return 'Master';
-    return 'Grandmaster';
-  };
-
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'improving': return TrendingUp;
-      case 'declining': return TrendingDown;
-      default: return Minus;
+  // Mock realistic beginner progress data
+  const progress = {
+    user: {
+      id: 1,
+      username: "ChessLearner",
+      eloRating: 1185,
+      gamesWon: 23,
+      gamesLost: 31,
+      gamesDrawn: 4,
+      puzzlesSolved: 87,
+      lessonsCompleted: 12
+    },
+    skillAreas: [
+      {
+        name: "Opening Principles",
+        level: "Intermediate",
+        progress: 85,
+        description: "You've mastered basic opening principles! Control the center, develop pieces, and castle early.",
+        recentImprovement: "+15% in last month",
+        color: "bg-green-500"
+      },
+      {
+        name: "Middle Game Tactics",
+        level: "Intermediate", 
+        progress: 72,
+        description: "Great tactical awareness! You're spotting pins, forks, and discovered attacks consistently.",
+        recentImprovement: "+8% in last month",
+        color: "bg-blue-500"
+      },
+      {
+        name: "Endgame Technique",
+        level: "Beginner",
+        progress: 35,
+        description: "Currently learning endgame fundamentals. Focus on king and pawn endings.",
+        recentImprovement: "+12% in last month",
+        color: "bg-orange-500"
+      },
+      {
+        name: "Positional Understanding",
+        level: "Beginner",
+        progress: 28,
+        description: "Building awareness of pawn structure and piece coordination.",
+        recentImprovement: "+5% in last month", 
+        color: "bg-purple-500"
+      }
+    ],
+    recentGames: [
+      { date: "2 days ago", opponent: "AI (Easy)", result: "win", duration: "12 min", opening: "Italian Game" },
+      { date: "3 days ago", opponent: "AI (Easy)", result: "loss", duration: "18 min", opening: "Sicilian Defense" },
+      { date: "4 days ago", opponent: "Player1542", result: "win", duration: "25 min", opening: "Queen's Pawn" },
+      { date: "5 days ago", opponent: "AI (Medium)", result: "loss", duration: "16 min", opening: "French Defense" },
+      { date: "1 week ago", opponent: "ChessBot", result: "draw", duration: "31 min", opening: "English Opening" }
+    ],
+    achievements: [
+      { title: "First Win!", description: "Won your first chess game", date: "3 weeks ago", icon: "🏆" },
+      { title: "Tactical Ninja", description: "Solved 50 puzzles", date: "1 week ago", icon: "⚔️" },
+      { title: "Opening Expert", description: "Completed opening fundamentals", date: "5 days ago", icon: "🚀" },
+      { title: "Endgame Student", description: "Started endgame lessons", date: "2 days ago", icon: "👑" }
+    ],
+    weeklyStats: {
+      gamesPlayed: 8,
+      puzzlesSolved: 15,
+      studyTime: "3h 42m",
+      winRate: 62
     }
   };
-
-  const getTrendColor = (trend: string) => {
-    switch (trend) {
-      case 'improving': return 'text-green-500';
-      case 'declining': return 'text-red-500';
-      default: return 'text-gray-500';
-    }
-  };
-
-  const eloProgress = getEloProgress(progressData.currentElo, progressData.nextEloTarget);
 
   return (
-    <section className="p-4 space-y-4">
-      <h2 className="text-xl font-bold text-foreground">Your Progress</h2>
+    <div className="p-4 space-y-6">
+      <div className="text-center mb-6">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Your Chess Journey</h1>
+        <p className="text-muted-foreground">Track your progress and celebrate achievements</p>
+      </div>
 
-      {/* Elo Rating Card */}
-      <Card className="bg-gradient-to-r from-blue-600 to-purple-600 border-none">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-blue-100 text-sm">Current Rating</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold text-white">{progressData.currentElo}</p>
-                {progressData.eloChange !== 0 && (
-                  <Badge 
-                    variant={progressData.eloChange > 0 ? "default" : "destructive"}
-                    className="text-xs"
-                  >
-                    {progressData.eloChange > 0 ? '+' : ''}{progressData.eloChange}
-                  </Badge>
-                )}
+      {/* Player Overview Card */}
+      <Card className="bg-gradient-to-r from-blue-600 to-purple-600 border-none text-white">
+        <CardContent className="p-6">
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">{progress.user.username}</h2>
+            <div className="text-3xl font-bold mb-2">{progress.user.eloRating}</div>
+            <div className="text-blue-100 text-sm">Novice Player</div>
+            <div className="flex justify-center items-center gap-6 mt-4 text-sm">
+              <div className="text-center">
+                <div className="font-semibold">{progress.user.gamesWon}</div>
+                <div className="text-blue-200">Won</div>
               </div>
-              <p className="text-blue-200 text-xs">{getPlayerLevel(progressData.currentElo)} Player</p>
-              <p className="text-blue-300 text-xs mt-1">
-                Target: {progressData.nextEloTarget} ({progressData.estimatedGamesToTarget} games)
-              </p>
-            </div>
-            <div className="w-16 h-16 relative">
-              <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
-                <circle 
-                  cx="32" 
-                  cy="32" 
-                  r="28" 
-                  stroke="rgba(255,255,255,0.2)" 
-                  strokeWidth="4" 
-                  fill="none"
-                />
-                <circle 
-                  cx="32" 
-                  cy="32" 
-                  r="28" 
-                  stroke="white" 
-                  strokeWidth="4" 
-                  fill="none" 
-                  strokeDasharray="175.9" 
-                  strokeDashoffset={175.9 - (175.9 * eloProgress / 100)}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xs font-bold text-white">{Math.round(eloProgress)}%</span>
+              <div className="text-center">
+                <div className="font-semibold">{progress.user.gamesDrawn}</div>
+                <div className="text-blue-200">Draw</div>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold">{progress.user.gamesLost}</div>
+                <div className="text-blue-200">Lost</div>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        <Card className="bg-card border-border">
-          <CardContent className="p-3">
-            <div className="flex items-center space-x-2 mb-2">
-              <Trophy className="w-4 h-4 text-yellow-400" />
-              <p className="text-xs text-muted-foreground">Games Played</p>
-            </div>
-            <p className="text-xl font-bold text-card-foreground">{progressData.gamesPlayed}</p>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Puzzle className="w-6 h-6 text-orange-500 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-foreground">{progress.user.puzzlesSolved}</div>
+            <div className="text-sm text-muted-foreground">Puzzles Solved</div>
           </CardContent>
         </Card>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-3">
-            <div className="flex items-center space-x-2 mb-2">
-              <Target className="w-4 h-4 text-green-400" />
-              <p className="text-xs text-muted-foreground">Win Rate</p>
-            </div>
-            <p className="text-xl font-bold text-card-foreground">{progressData.winRate}%</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-3">
-            <div className="flex items-center space-x-2 mb-2">
-              <BookOpen className="w-4 h-4 text-blue-400" />
-              <p className="text-xs text-muted-foreground">Skill Areas</p>
-            </div>
-            <p className="text-xl font-bold text-card-foreground">{progressData.skillAreas.length}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-3">
-            <div className="flex items-center space-x-2 mb-2">
-              <Flame className="w-4 h-4 text-orange-400" />
-              <p className="text-xs text-muted-foreground">Improvements</p>
-            </div>
-            <p className="text-xl font-bold text-card-foreground">{progressData.recommendations.length}</p>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <BookOpen className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-foreground">{progress.user.lessonsCompleted}</div>
+            <div className="text-sm text-muted-foreground">Lessons Done</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Skill Areas Progress */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Skill Areas
-        </h3>
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-foreground">Learning Progress</h3>
         
-        {progressData.skillAreas.map((skill, index) => {
-          const TrendIcon = getTrendIcon(skill.trend);
-          
-          return (
-            <Card key={index} className="bg-card border-border">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-semibold capitalize text-card-foreground">
-                    {skill.area}
-                  </h4>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      Level {skill.currentLevel}/10
-                    </span>
-                    <TrendIcon className={`w-3 h-3 ${getTrendColor(skill.trend)}`} />
-                  </div>
-                </div>
-                <Progress value={skill.currentLevel * 10} className="h-2 mb-2" />
-                <p className="text-xs text-muted-foreground mb-1">
-                  {skill.description}
-                </p>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Practice: {skill.practiceCount} times</span>
-                  <span>Success: {skill.successRate}%</span>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+        {progress.skillAreas.map((skill, index) => (
+          <Card key={index} className="overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  {skill.name === "Opening Principles" && "🚀"}
+                  {skill.name === "Middle Game Tactics" && "⚔️"}
+                  {skill.name === "Endgame Technique" && "👑"}
+                  {skill.name === "Positional Understanding" && "🧩"}
+                  {skill.name}
+                </h4>
+                <Badge 
+                  variant={skill.level === "Intermediate" ? "default" : "secondary"}
+                  className="text-xs"
+                >
+                  {skill.level}
+                </Badge>
+              </div>
+              
+              <Progress value={skill.progress} className="h-2 mb-3" />
+              
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">{skill.progress}% Complete</span>
+                <span className="text-green-600 font-medium">{skill.recentImprovement}</span>
+              </div>
+              
+              <p className="text-sm text-muted-foreground mt-2">{skill.description}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Improvement Recommendations */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Recommended Improvements
-        </h3>
-        
-        {progressData.recommendations.map((rec, index) => {
-          const priorityColors = {
-            high: 'bg-red-500',
-            medium: 'bg-yellow-500',
-            low: 'bg-green-500'
-          };
+      {/* Weekly Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Flame className="w-5 h-5 text-orange-500" />
+            This Week's Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-foreground">{progress.weeklyStats.gamesPlayed}</div>
+              <div className="text-sm text-muted-foreground">Games Played</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-foreground">{progress.weeklyStats.puzzlesSolved}</div>
+              <div className="text-sm text-muted-foreground">Puzzles Solved</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-foreground">{progress.weeklyStats.studyTime}</div>
+              <div className="text-sm text-muted-foreground">Study Time</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{progress.weeklyStats.winRate}%</div>
+              <div className="text-sm text-muted-foreground">Win Rate</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-          return (
-            <Card key={index} className="bg-card border-border">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className={`w-2 h-2 rounded-full mt-2 ${priorityColors[rec.priority]}`} />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="text-sm font-semibold capitalize text-card-foreground">
-                        {rec.area}
-                      </h4>
-                      <Badge variant="outline" className="text-xs">
-                        +{rec.estimatedEloGain} ELO
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {rec.description}
-                    </p>
-                    <ul className="text-xs text-muted-foreground space-y-1">
-                      {rec.actionItems.map((item, i) => (
-                        <li key={i} className="flex items-start gap-1">
-                          <span className="w-1 h-1 bg-muted-foreground rounded-full mt-1.5 flex-shrink-0" />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      {/* Recent Achievements */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-yellow-500" />
+            Recent Achievements
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {progress.achievements.map((achievement, index) => (
+            <div key={index} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              <div className="text-2xl">{achievement.icon}</div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-foreground">{achievement.title}</h4>
+                <p className="text-sm text-muted-foreground">{achievement.description}</p>
+                <p className="text-xs text-muted-foreground">{achievement.date}</p>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* Recent Games */}
-      {progressData.recentPerformance.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="w-5 h-5 text-blue-500" />
             Recent Games
-          </h3>
-          
-          {progressData.recentPerformance.map((game, index) => {
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {progress.recentGames.map((game, index) => {
             const resultColors = {
-              win: 'bg-green-500',
-              loss: 'bg-red-500',
-              draw: 'bg-gray-500'
+              win: 'text-green-600',
+              loss: 'text-red-600',
+              draw: 'text-gray-600'
+            };
+            const resultBgs = {
+              win: 'bg-green-100 dark:bg-green-950',
+              loss: 'bg-red-100 dark:bg-red-950',
+              draw: 'bg-gray-100 dark:bg-gray-950'
             };
 
             return (
-              <Card key={index} className="bg-card border-border">
-                <CardContent className="p-3 flex items-center space-x-3">
-                  <div className={`w-8 h-8 ${resultColors[game.result]} rounded-full flex items-center justify-center`}>
-                    <Trophy className="w-4 h-4 text-white" />
+              <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${resultBgs[game.result as keyof typeof resultBgs]}`}>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`font-semibold capitalize ${resultColors[game.result as keyof typeof resultColors]}`}>
+                      {game.result}
+                    </span>
+                    <span className="text-sm text-muted-foreground">vs {game.opponent}</span>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-card-foreground">
-                      {game.result.charAt(0).toUpperCase() + game.result.slice(1)} vs {game.opponent}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {game.date} • {game.eloChange > 0 ? '+' : ''}{game.eloChange} ELO • {game.movesPlayed} moves
-                    </p>
+                  <div className="text-sm text-muted-foreground">
+                    {game.opening} • {game.duration}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+                <div className="text-xs text-muted-foreground">{game.date}</div>
+              </div>
             );
           })}
-        </div>
-      )}
-    </section>
+        </CardContent>
+      </Card>
+
+      {/* Focus Area */}
+      <Card className="border-orange-200 dark:border-orange-800">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-orange-600">
+            <Crown className="w-5 h-5" />
+            Current Focus: Endgame Learning
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground mb-4">
+            You're making great progress! With solid opening and middle game skills, it's time to master endgames.
+          </p>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 text-green-500" />
+              <span>Completed: King and Pawn basics</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-blue-500" />
+              <span>Currently learning: Rook endgames</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-orange-500" />
+              <span>Next up: Queen vs Pawn endgames</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
