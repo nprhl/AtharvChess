@@ -1,6 +1,15 @@
 import { storage } from "./storage";
 import OpenAI from "openai";
 
+interface GameAnalysis {
+  totalGames: number;
+  winRate: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  weaknesses: string[];
+}
+
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY 
 });
@@ -12,23 +21,41 @@ export class TipService {
     const difficulty = userSettings?.difficulty || 'beginner';
     
     // Get today's tip based on user's level
-    const tip = await storage.getTodaysTip(difficulty);
+    let tip = await storage.getTodaysTip(difficulty);
     
-    if (tip) {
-      // Mark as viewed
-      await storage.markTipAsViewed(userId, tip.id);
+    // If no regular tip available, try to generate a personalized one
+    if (!tip) {
+      tip = await this.generatePersonalizedTip(userId);
       
-      // Get user's progress on this tip
-      const userProgress = await storage.getUserTipProgress(userId);
-      const tipProgress = userProgress.find(p => p.tipId === tip.id);
-      
-      return {
-        ...tip,
-        progress: tipProgress || { completed: false, bookmarked: false }
-      };
+      // If personalized tip was generated, store it temporarily
+      if (tip && tip.isPersonalized) {
+        tip.id = 0; // Temporary ID for personalized tips
+      }
     }
     
-    // If no tip for today, return a fallback tip
+    if (tip) {
+      if (tip.id > 0) {
+        // Mark as viewed for database tips
+        await storage.markTipAsViewed(userId, tip.id);
+        
+        // Get user's progress on this tip
+        const userProgress = await storage.getUserTipProgress(userId);
+        const tipProgress = userProgress.find(p => p.tipId === tip.id);
+        
+        return {
+          ...tip,
+          progress: tipProgress || { completed: false, bookmarked: false }
+        };
+      } else {
+        // Return tip with default progress for personalized tips
+        return {
+          ...tip,
+          progress: { completed: false, bookmarked: false }
+        };
+      }
+    }
+    
+    // Fallback if no tip available
     return await this.getFallbackTip(difficulty);
   }
 
@@ -141,34 +168,46 @@ export class TipService {
     };
   }
 
-  // Generate personalized tip using AI (future enhancement)
+  // Generate personalized tip using AI based on user's game history and performance
   async generatePersonalizedTip(userId: number): Promise<any> {
     if (!process.env.OPENAI_API_KEY) {
       return null;
     }
 
     try {
-      // Get user's recent games and weaknesses
+      // Get user's recent games and performance data
       const user = await storage.getUser(userId);
       const userSettings = await storage.getUserSettings(userId);
+      const recentGames = await storage.getGamesByUserId(userId);
       
       if (!user) return null;
 
-      const prompt = `Generate a personalized chess tip for a ${userSettings?.difficulty || 'beginner'} level player with ELO rating ${user.eloRating}. 
+      // Analyze recent game patterns
+      const gameAnalysis = this.analyzeRecentGames(recentGames.slice(0, 5));
+      
+      const prompt = `Generate a personalized chess tip for a ${userSettings?.difficulty || 'beginner'} level player with ELO rating ${user.eloRating}.
 
-Create a concise, actionable tip that:
-1. Takes 20-30 seconds to read
-2. Provides immediate value
-3. Is appropriate for their skill level
-4. Includes a specific example or position
+Player Statistics:
+- Current ELO: ${user.eloRating}
+- Games Won: ${user.gamesWon}
+- Recent Performance: ${gameAnalysis.winRate}% win rate in last ${gameAnalysis.totalGames} games
+- Identified Weaknesses: ${gameAnalysis.weaknesses.join(', ') || 'General improvement needed'}
+
+Create a targeted tip that:
+1. Addresses their specific skill level and recent performance
+2. Takes 25-35 seconds to read
+3. Provides actionable advice they can use immediately
+4. Is encouraging and specific to their ELO range
 
 Format as JSON:
 {
-  "title": "Engaging tip title",
-  "content": "Clear, actionable content with example",
+  "title": "Engaging, specific tip title",
+  "content": "Detailed, actionable content with chess examples",
   "category": "opening|tactics|endgame|strategy|psychology",
   "estimatedReadTime": seconds,
-  "tags": ["relevant", "tags"]
+  "tags": ["relevant", "tags", "based", "on", "analysis"],
+  "fen": "optional_chess_position_fen_if_relevant",
+  "moves": [{"from": "e2", "to": "e4"}]
 }`;
 
       const response = await openai.chat.completions.create({
@@ -176,7 +215,7 @@ Format as JSON:
         messages: [
           {
             role: "system",
-            content: "You are a chess coach creating personalized daily tips. Keep tips concise, practical, and encouraging."
+            content: "You are an expert chess coach creating personalized tips based on player performance data. Focus on practical, immediately applicable advice."
           },
           {
             role: "user",
@@ -184,27 +223,69 @@ Format as JSON:
           }
         ],
         response_format: { type: "json_object" },
-        max_tokens: 200,
-        temperature: 0.7
+        max_tokens: 300,
+        temperature: 0.8
       });
 
       const result = JSON.parse(response.choices[0].message.content || '{}');
       
       return {
-        title: result.title,
-        content: result.content,
-        category: result.category || 'general',
+        id: 0, // Personalized tips get temporary ID
+        title: result.title || "Personalized Chess Insight",
+        content: result.content || "Keep practicing and focus on fundamental principles!",
+        category: result.category || 'strategy',
         difficulty: userSettings?.difficulty || 'beginner',
-        estimatedReadTime: result.estimatedReadTime || 25,
-        tags: result.tags || [],
+        fen: result.fen || null,
+        moves: result.moves || [],
+        estimatedReadTime: result.estimatedReadTime || 30,
+        tags: [...(result.tags || []), 'personalized', 'ai-generated'],
         publishDate: new Date(),
-        isPersonalized: true
+        isPersonalized: true,
+        isActive: true
       };
 
     } catch (error) {
       console.error('Error generating personalized tip:', error);
       return null;
     }
+  }
+
+  // Analyze recent games to identify patterns and weaknesses
+  private analyzeRecentGames(games: any[]): GameAnalysis {
+    if (games.length === 0) {
+      return {
+        totalGames: 0,
+        winRate: 0,
+        weaknesses: ['Practice more games to get personalized insights']
+      };
+    }
+
+    const wins = games.filter(g => g.result === 'win').length;
+    const losses = games.filter(g => g.result === 'loss').length;
+    const draws = games.filter(g => g.result === 'draw').length;
+    
+    const winRate = Math.round((wins / games.length) * 100);
+    const weaknesses: string[] = [];
+
+    // Analyze patterns based on results and ELO changes
+    if (winRate < 40) {
+      weaknesses.push('tactical awareness', 'opening principles');
+    }
+    if (losses > wins) {
+      weaknesses.push('endgame technique', 'time management');
+    }
+    if (draws > wins) {
+      weaknesses.push('converting advantages', 'attack coordination');
+    }
+
+    return {
+      totalGames: games.length,
+      winRate,
+      wins,
+      losses,
+      draws,
+      weaknesses: weaknesses.length > 0 ? weaknesses : ['general improvement']
+    };
   }
 }
 

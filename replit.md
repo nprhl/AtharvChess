@@ -37,6 +37,9 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 - **Hint Generation**: Context-aware suggestions based on current position and game history
 - **Lesson Generation**: Dynamic lesson creation from actual gameplay patterns and mistakes
 - **Progress Analysis**: AI-powered skill assessment and improvement recommendations
+- **Personalized Daily Tips**: AI generates custom tips based on user performance, ELO rating, and game history analysis
+- **Contextual Learning**: Game-integrated tips that respond to current position, game phase, and player situation
+- **Learning Moment Detection**: Automatic recognition and recording of blunders, missed tactics, and good moves
 
 ### New UI Components
 - **PromotionDialog**: Modal dialog for pawn promotion piece selection
@@ -70,6 +73,9 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 - Server-side user data and progress tracking
 - Optimistic updates with React Query
 - Type-safe API contracts with Zod validation
+- Daily tips database with user interaction tracking (views, completions, bookmarks, ratings)
+- Game integration service for contextual learning opportunities
+- User performance analysis for personalized tip generation
 
 ## Data Flow
 
@@ -124,6 +130,15 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 - Replit-specific features enabled via `REPL_ID` detection
 
 ## Recent Changes
+
+- **August 13, 2025**: Comprehensive Daily Tips System & AI-Powered Personalization
+  - **Micro-Learning System**: Complete daily chess tips with database schema, categorized by opening, tactics, endgame, strategy, psychology
+  - **AI-Generated Personalized Tips**: GPT-4o analyzes user performance, ELO, and game history to generate custom daily tips
+  - **Game Integration**: Contextual tips during gameplay, situational advice, and learning moment tracking
+  - **Interactive Tip Components**: Chess position visualization, bookmark system, rating functionality, progress tracking
+  - **Smart Tip Navigation**: Added Tips tab to bottom navigation with comprehensive browsing by category and difficulty
+  - **User Progress Analytics**: Completion rates, reading streaks, bookmark management, and learning statistics
+  - **Game Integration Hooks**: Real-time tip delivery based on game phase (opening/middlegame/endgame) and player situations
 
 - **August 11, 2025**: Complete Chess Rules Implementation & User Interface Improvements
   - **Pawn Promotion System**: Added complete pawn promotion dialog with piece selection (Queen, Rook, Bishop, Knight)
@@ -187,6 +202,7 @@ This is a full-stack chess learning application built with React, TypeScript, Ex
 
 ## Changelog
 
+- August 13, 2025: Daily tips system with AI personalization and game integration
 - August 11, 2025: Complete chess rules implementation (pawn promotion, color selection)
 - August 11, 2025: Header authentication and progress data fixes
 - August 11, 2025: Game settings dialog and user interface improvements

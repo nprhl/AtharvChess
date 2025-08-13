@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, requireAuth, getCurrentUser, hashPassword } from "./auth";
 import { puzzleService } from "./puzzle-service";
 import { tipService } from "./tip-service";
+import { gameIntegration } from "./game-integration";
 import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema } from "@shared/schema";
 import { z } from "zod";
 import { ChessAI, type Difficulty } from "./chess-ai";
@@ -764,6 +765,58 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
       res.json(stats);
     } catch (error) {
       console.error("Error fetching tip stats:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Game Integration Routes
+  app.post("/api/game/contextual-tip", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { fen, gamePhase } = req.body;
+      
+      if (!fen || !gamePhase) {
+        return res.status(400).json({ message: "FEN and game phase are required" });
+      }
+
+      const tip = await gameIntegration.getContextualTip(user.id, fen, gamePhase);
+      res.json(tip);
+    } catch (error) {
+      console.error("Error fetching contextual tip:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/game/learning-moment", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { momentType, fen, moveSan } = req.body;
+      
+      if (!momentType || !fen || !moveSan) {
+        return res.status(400).json({ message: "Moment type, FEN, and move are required" });
+      }
+
+      await gameIntegration.recordLearningMoment(user.id, momentType, fen, moveSan);
+      res.json({ message: "Learning moment recorded" });
+    } catch (error) {
+      console.error("Error recording learning moment:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/game/situational-advice", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { situation } = req.body;
+      
+      if (!situation) {
+        return res.status(400).json({ message: "Situation is required" });
+      }
+
+      const advice = await gameIntegration.getSituationalAdvice(user.id, situation);
+      res.json(advice);
+    } catch (error) {
+      console.error("Error fetching situational advice:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

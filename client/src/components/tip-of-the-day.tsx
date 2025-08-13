@@ -18,6 +18,7 @@ interface ChessTip {
   moves?: Array<{ from: string; to: string }>;
   estimatedReadTime: number;
   tags: string[];
+  isPersonalized?: boolean;
   progress: {
     completed: boolean;
     bookmarked: boolean;
@@ -194,10 +195,27 @@ export default function TipOfTheDay() {
         {tip.tags && tip.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {tip.tags.map((tag, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {tag}
+              <Badge 
+                key={index} 
+                variant={tag === 'personalized' || tag === 'ai-generated' ? 'default' : 'secondary'} 
+                className={`text-xs ${
+                  tag === 'personalized' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                  tag === 'ai-generated' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : ''
+                }`}
+              >
+                {tag === 'personalized' ? '👤 Personalized' : 
+                 tag === 'ai-generated' ? '🤖 AI-Generated' : tag}
               </Badge>
             ))}
+          </div>
+        )}
+
+        {tip.isPersonalized && (
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 p-3 rounded-lg border">
+            <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              This tip was generated specifically for your skill level and recent performance
+            </div>
           </div>
         )}
 
