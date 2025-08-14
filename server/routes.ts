@@ -11,6 +11,7 @@ import { z } from "zod";
 import { ChessAI, type Difficulty } from "./chess-ai";
 import { OllamaChessAI } from "./ollama-chess-ai";
 import { OpenAIChessAI } from "./openai-chess-ai";
+import { gameAnalyzer } from "./game-analyzer";
 import { MoveEvaluator } from "./move-evaluator";
 import { evals as evalRoutes } from "./routes/evals";
 import { db } from "./db";
@@ -368,57 +369,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let bestMove = null;
       let aiEngine = 'traditional';
 
-      // Try OpenAI first (primary engine)
-      if (process.env.OPENAI_API_KEY) {
-        console.log('Trying OpenAI chess AI (primary engine)...');
-        try {
-          const openaiAI = new OpenAIChessAI(difficulty as Difficulty);
-          bestMove = await openaiAI.getBestMove(fen);
-          if (bestMove) {
-            aiEngine = 'openai';
-            console.log(`OpenAI AI (${difficulty}) played: ${bestMove.san}`);
-          } else {
-            console.log('OpenAI returned null move');
-          }
-        } catch (error) {
-          const errorMsg = (error as any).code === 'insufficient_quota' 
-            ? 'OpenAI quota exceeded - need to add billing/credits to API account'
-            : (error as Error).message;
-          console.log('OpenAI error:', errorMsg);
-        }
-      } else {
-        console.log('OpenAI unavailable: API key missing');
-      }
-
-      // Try Ollama as fallback option  
-      if (!bestMove && useOllama) {
-        console.log('OpenAI failed, trying Ollama fallback...');
-        try {
-          const ollamaAI = new OllamaChessAI(difficulty as Difficulty);
-          bestMove = await ollamaAI.getBestMove(fen);
-          if (bestMove) {
-            aiEngine = 'ollama';
-            console.log(`Ollama AI (${difficulty}) played: ${bestMove.san}`);
-          }
-        } catch (error) {
-          console.log('Ollama also unavailable, falling back to traditional engine');
-        }
-      } else if (!bestMove) {
-        console.log('Skipping Ollama, falling back to traditional engine');
-      }
-
-      // Fallback to traditional chess engine
-      if (!bestMove) {
-        console.log(`Creating traditional ChessAI with difficulty: ${difficulty}`);
-        const traditionalAI = new ChessAI(difficulty as Difficulty);
-        bestMove = traditionalAI.getBestMove(fen);
-        aiEngine = 'traditional';
-        console.log(`Traditional AI (${difficulty}) played: ${bestMove?.san}`);
-      }
+      // Use Traditional ChessAI as primary engine for fast moves
+      console.log(`Using fast traditional ChessAI with difficulty: ${difficulty}`);
+      const traditionalAI = new ChessAI(difficulty as Difficulty);
+      bestMove = traditionalAI.getBestMove(fen);
+      aiEngine = 'traditional';
+      console.log(`Traditional AI (${difficulty}) played: ${bestMove?.san}`);
       
       if (!bestMove) {
         return res.status(400).json({ message: "No valid moves available" });
       }
+
+      // Queue background analysis of AI move (non-blocking)
+      gameAnalyzer.queueAnalysis(fen, bestMove.san, 'ai');
       
       res.json({
         move: {
