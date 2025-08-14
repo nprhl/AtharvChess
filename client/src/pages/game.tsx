@@ -9,8 +9,6 @@ import { useChessGame } from "@/hooks/use-chess-game";
 import { useEffect, useCallback } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Undo, HelpCircle, RotateCcw, X, Lightbulb } from "lucide-react";
+import { Undo, HelpCircle, RotateCcw } from "lucide-react";
 
 export default function GamePage() {
   const [settings, setSettings] = useLocalStorage('chess-settings', {
@@ -180,7 +178,18 @@ export default function GamePage() {
 
       {/* Bottom Section - Fixed */}
       <div className="flex-shrink-0 space-y-3">
-        {/* Hide hint on mobile to prevent chess board obstruction */}
+        {/* AI Hint Card */}
+        {showHint && currentHint && (
+          <AIHintCard 
+            hint={currentHint}
+            onClose={() => {
+              setShowHint(false);
+              setCurrentHint(null);
+              setSuggestedMove(null);
+            }}
+            onShowMove={handleShowMove}
+          />
+        )}
 
         {/* Game Controls */}
         <div className="flex space-x-2">
@@ -251,10 +260,9 @@ export default function GamePage() {
             <Button 
               className="flex-1 bg-blue-600 hover:bg-blue-700"
               onClick={handleGetHint}
-              disabled={true}
             >
               <HelpCircle className="w-4 h-4 mr-2" />
-              Hint (Disabled)
+              Hint
             </Button>
           )}
         </div>
