@@ -6,7 +6,8 @@ export function registerGameMoveRoutes(app: Express) {
   // Player move endpoint for recording moves during the game
   app.post("/api/game/move", requireAuth, async (req, res) => {
     try {
-      const userId = getCurrentUser(req)?.id;
+      const user = getCurrentUser(req);
+      const userId = user?.id;
       if (!userId) {
         return res.status(401).json({ message: "User not found" });
       }
