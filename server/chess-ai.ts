@@ -93,8 +93,8 @@ export class ChessAI {
   private getSearchDepth(): number {
     switch (this.difficulty) {
       case 'beginner': return 1; // Shallow for weaker play
-      case 'intermediate': return 3; 
-      case 'advanced': return 6; // Much deeper for strongest play
+      case 'intermediate': return 2; // Medium depth for balance
+      case 'advanced': return 3; // Optimized depth for fast performance
       default: return 2;
     }
   }
