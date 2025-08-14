@@ -58,6 +58,8 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     const savedGame = GameStorageManager.loadGame();
     if (savedGame && !initialFen) {
       gameEngine.loadGame(savedGame.fen);
+      // Clear last move when loading a saved game to avoid stale highlights
+      setLastMove(null);
       triggerUpdate();
     }
   }, [gameEngine, initialFen, triggerUpdate]);
@@ -175,6 +177,14 @@ export function useChessGame(options: UseChessGameOptions = {}) {
   const undoMove = useCallback((): Move | null => {
     const undone = gameEngine.undoMove();
     if (undone) {
+      // Update last move to the previous move if it exists
+      const history = gameEngine.history;
+      if (history.length > 0) {
+        const lastHistoryMove = history[history.length - 1];
+        setLastMove({ from: lastHistoryMove.from, to: lastHistoryMove.to });
+      } else {
+        setLastMove(null);
+      }
       triggerUpdate();
       saveGameState();
     }
@@ -187,6 +197,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
 
   const resetGame = useCallback(() => {
     gameEngine.reset();
+    setLastMove(null); // Clear last move highlighting
     triggerUpdate();
     GameStorageManager.clearGame();
   }, [gameEngine, triggerUpdate]);
