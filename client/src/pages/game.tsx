@@ -4,6 +4,7 @@ import AIHintCard from "@/components/ai-hint-card";
 import MoveEvaluationDisplay from "@/components/move-evaluation";
 import PromotionDialog from "@/components/promotion-dialog";
 import GameSettingsDialog from "@/components/game-settings-dialog";
+import CapturedPieces from "@/components/captured-pieces";
 import { useStockfishMoveEvaluation } from "../hooks/useStockfishMoveEvaluation";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useEffect, useCallback } from "react";
@@ -47,6 +48,7 @@ export default function GamePage() {
     resetGame,
     turn,
     moveHistory,
+    capturedPieces,
     isComputerThinking,
     gameMode,
     playerColor,
@@ -170,15 +172,53 @@ export default function GamePage() {
         </div>
       </div>
 
-      {/* Interactive Chessboard */}
-      <div className="flex-1 flex items-center justify-center px-2">
-        <ChessBoard 
-          game={game}
-          onMove={makeMove}
-          getValidMoves={getValidMoves}
-          lastMove={lastMove}
-          disabled={isGameOver() || isComputerThinking || (gameMode === 'pvc' && turn !== playerColor)}
-        />
+      {/* Game Layout */}
+      <div className="flex-1 flex flex-col items-center justify-center px-2 space-y-3">
+        {/* Captured Pieces - Desktop (side by side with board) */}
+        <div className="hidden md:flex w-full max-w-6xl items-center justify-center space-x-8">
+          <div className="flex-shrink-0 w-48">
+            <CapturedPieces
+              capturedByWhite={capturedPieces.white}
+              capturedByBlack={capturedPieces.black}
+              playerColor={playerColor}
+            />
+          </div>
+          
+          <div className="flex-shrink-0">
+            <ChessBoard 
+              game={game}
+              onMove={makeMove}
+              getValidMoves={getValidMoves}
+              lastMove={lastMove}
+              disabled={isGameOver() || isComputerThinking || (gameMode === 'pvc' && turn !== playerColor)}
+            />
+          </div>
+          
+          <div className="flex-shrink-0 w-48"></div> {/* Spacer for symmetry */}
+        </div>
+
+        {/* Mobile/Tablet Layout */}
+        <div className="md:hidden flex flex-col items-center space-y-3 w-full">
+          {/* Captured Pieces - Above board on mobile/tablet */}
+          <div className="w-full max-w-sm">
+            <CapturedPieces
+              capturedByWhite={capturedPieces.white}
+              capturedByBlack={capturedPieces.black}
+              playerColor={playerColor}
+            />
+          </div>
+          
+          {/* Interactive Chessboard */}
+          <div className="flex-shrink-0">
+            <ChessBoard 
+              game={game}
+              onMove={makeMove}
+              getValidMoves={getValidMoves}
+              lastMove={lastMove}
+              disabled={isGameOver() || isComputerThinking || (gameMode === 'pvc' && turn !== playerColor)}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Bottom Section - Fixed */}

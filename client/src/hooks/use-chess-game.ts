@@ -226,6 +226,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     fen: gameEngine.fen.bind(gameEngine),
     turn: gameEngine.turn,
     moveHistory: gameEngine.history,
+    capturedPieces: gameEngine.capturedPieces,
     isComputerThinking,
     gameMode: currentGameMode,
     playerColor: currentPlayerColor,
