@@ -1,21 +1,30 @@
 import OpenAI from 'openai';
 import { Chess } from 'chess.js';
 
-interface GameAnalysis {
-  position: string;
-  playerMove?: string;
-  aiMove?: string;
-  phase: 'opening' | 'middlegame' | 'endgame';
-  feedback: string;
-  suggestions: string[];
-  blunderDetected: boolean;
-  goodMove: boolean;
+interface GameMove {
+  move: string;
+  fen: string;
+  player: 'human' | 'ai';
+  moveNumber: number;
+}
+
+interface GameAnalysisReport {
+  gameId: number;
+  userId: number;
+  overallPerformance: string;
+  keyLearningPoints: string[];
+  bestMoves: Array<{ move: string; reason: string }>;
+  mistakesMade: Array<{ move: string; better: string; explanation: string }>;
+  openingAssessment: string;
+  middlegameAssessment: string;
+  endgameAssessment: string;
+  encouragement: string;
+  nextStepsForImprovement: string[];
 }
 
 export class GameAnalyzer {
   private openai: OpenAI;
-  private analysisQueue: Array<{ fen: string; lastMove: string; player: 'human' | 'ai' }> = [];
-  private processing = false;
+  private gameMovesBuffer = new Map<string, GameMove[]>(); // Store moves by gameId
 
   constructor() {
     this.openai = new OpenAI({
@@ -23,67 +32,64 @@ export class GameAnalyzer {
     });
   }
 
-  // Queue analysis without blocking game moves
-  public queueAnalysis(fen: string, lastMove: string, player: 'human' | 'ai'): void {
-    this.analysisQueue.push({ fen, lastMove, player });
+  // Collect moves during the game without analysis
+  public recordMove(gameId: string, fen: string, move: string, player: 'human' | 'ai'): void {
+    if (!this.gameMovesBuffer.has(gameId)) {
+      this.gameMovesBuffer.set(gameId, []);
+    }
     
-    // Process queue asynchronously without blocking
-    if (!this.processing) {
-      this.processQueue();
-    }
+    const moves = this.gameMovesBuffer.get(gameId)!;
+    moves.push({
+      move,
+      fen,
+      player,
+      moveNumber: Math.floor(moves.length / 2) + 1
+    });
   }
 
-  private async processQueue(): Promise<void> {
-    if (this.analysisQueue.length === 0) {
-      this.processing = false;
-      return;
-    }
-
-    this.processing = true;
-    const analysis = this.analysisQueue.shift();
-    if (!analysis) return;
-
-    try {
-      await this.analyzePosition(analysis.fen, analysis.lastMove, analysis.player);
-    } catch (error) {
-      console.log('Background analysis failed:', error);
-    }
-
-    // Continue processing queue
-    setTimeout(() => this.processQueue(), 100);
-  }
-
-  private async analyzePosition(fen: string, lastMove: string, player: 'human' | 'ai'): Promise<GameAnalysis | null> {
+  // Analyze complete game at the end for educational feedback
+  public async analyzeCompleteGame(gameId: string, userId: number, result: string): Promise<GameAnalysisReport | null> {
     if (!process.env.OPENAI_API_KEY) {
+      console.log('OpenAI not available for game analysis');
+      return null;
+    }
+
+    const moves = this.gameMovesBuffer.get(gameId);
+    if (!moves || moves.length === 0) {
+      console.log('No moves recorded for game analysis');
       return null;
     }
 
     try {
-      const chess = new Chess(fen);
-      const gamePhase = this.determineGamePhase(chess);
+      const gameHistory = moves.map(m => `${m.moveNumber}. ${m.move} (${m.player})`).join(' ');
+      const playerMoves = moves.filter(m => m.player === 'human').map(m => m.move);
       
-      const prompt = `Analyze this chess position after ${player === 'human' ? 'player' : 'computer'} played ${lastMove}:
+      const prompt = `Analyze this complete chess game played by a young learner:
 
-Position (FEN): ${fen}
-Last move: ${lastMove}
-Game phase: ${gamePhase}
-Player: ${player}
+Game Result: ${result}
+Total Moves: ${moves.length}
+Player Moves: ${playerMoves.join(', ')}
+Full Game: ${gameHistory}
 
-Provide analysis as JSON with:
-- feedback: Brief assessment of the move quality
-- suggestions: Array of 1-2 improvement suggestions for the player
-- blunderDetected: boolean if this was a serious mistake
-- goodMove: boolean if this was a strong move
-- phase: opening/middlegame/endgame
+Provide a comprehensive educational analysis as JSON with:
+- overallPerformance: Encouraging assessment of their overall play
+- keyLearningPoints: Array of 3-4 key lessons they can learn from this game
+- bestMoves: Array of 2-3 best moves they made with reasons
+- mistakesMade: Array of 1-2 main mistakes with better alternatives and explanations
+- openingAssessment: Brief assessment of opening play
+- middlegameAssessment: Brief assessment of middlegame play  
+- endgameAssessment: Brief assessment of endgame play (if applicable)
+- encouragement: Positive, motivating message for young chess player
+- nextStepsForImprovement: Array of 2-3 specific things to practice next
 
-Focus on educational value for chess learning.`;
+Focus on being educational, encouraging, and age-appropriate for young minds learning chess.`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-4o', // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
           {
             role: 'system',
-            content: 'You are a chess coach providing educational feedback. Return valid JSON only.'
+            content: 'You are a patient, encouraging chess coach working with young learners. Provide constructive, positive feedback that builds confidence while teaching important concepts. Return valid JSON only.'
           },
           {
             role: 'user',
@@ -91,44 +97,44 @@ Focus on educational value for chess learning.`;
           }
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 200
+        max_tokens: 600
       });
 
       const analysis = JSON.parse(response.choices[0].message.content || '{}');
       
-      // Store analysis for later retrieval (could use database)
-      console.log(`Background analysis complete: ${lastMove} - ${analysis.feedback}`);
+      // Clean up the moves buffer for this game
+      this.gameMovesBuffer.delete(gameId);
+      
+      console.log(`Game analysis completed for user ${userId}, game ${gameId}`);
       
       return {
-        position: fen,
-        playerMove: player === 'human' ? lastMove : undefined,
-        aiMove: player === 'ai' ? lastMove : undefined,
-        phase: analysis.phase || gamePhase,
-        feedback: analysis.feedback || '',
-        suggestions: analysis.suggestions || [],
-        blunderDetected: analysis.blunderDetected || false,
-        goodMove: analysis.goodMove || false
+        gameId: parseInt(gameId),
+        userId,
+        overallPerformance: analysis.overallPerformance || 'Good effort in this game!',
+        keyLearningPoints: analysis.keyLearningPoints || [],
+        bestMoves: analysis.bestMoves || [],
+        mistakesMade: analysis.mistakesMade || [],
+        openingAssessment: analysis.openingAssessment || 'Opening play was solid',
+        middlegameAssessment: analysis.middlegameAssessment || 'Middlegame showed good thinking',
+        endgameAssessment: analysis.endgameAssessment || 'Endgame technique developing',
+        encouragement: analysis.encouragement || 'Keep practicing and you\'ll continue to improve!',
+        nextStepsForImprovement: analysis.nextStepsForImprovement || []
       };
     } catch (error) {
-      console.log('OpenAI analysis error:', error);
+      console.log('Game analysis error:', error);
+      this.gameMovesBuffer.delete(gameId);
       return null;
     }
   }
 
-  private determineGamePhase(chess: Chess): 'opening' | 'middlegame' | 'endgame' {
-    const history = chess.history();
-    const pieces = chess.board().flat().filter(p => p !== null);
-    
-    if (history.length < 20) return 'opening';
-    if (pieces.length < 12) return 'endgame';
-    return 'middlegame';
+  // Clear game buffer if game is abandoned
+  public clearGameBuffer(gameId: string): void {
+    this.gameMovesBuffer.delete(gameId);
   }
 
-  // Get recent analysis for a position (for UI display)
-  public async getPositionFeedback(fen: string): Promise<string | null> {
-    // In a real implementation, this would query stored analysis
-    // For now, return null since analysis is background-only
-    return null;
+  // Get game analysis stats
+  public getBufferedGamesCount(): number {
+    return this.gameMovesBuffer.size;
   }
 }
 

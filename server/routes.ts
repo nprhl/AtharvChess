@@ -14,6 +14,7 @@ import { OpenAIChessAI } from "./openai-chess-ai";
 import { gameAnalyzer } from "./game-analyzer";
 import { MoveEvaluator } from "./move-evaluator";
 import { evals as evalRoutes } from "./routes/evals";
+import { registerGameMoveRoutes } from "./routes/game-move";
 import { db } from "./db";
 import { games, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
@@ -25,6 +26,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Mount API routes
   app.use('/api/evals', evalRoutes);
+  registerGameMoveRoutes(app);
 
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
@@ -380,8 +382,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No valid moves available" });
       }
 
-      // Queue background analysis of AI move (non-blocking)
-      gameAnalyzer.queueAnalysis(fen, bestMove.san, 'ai');
+      // Record AI move for end-of-game analysis
+      const gameId = req.body.gameId || 'current';
+      gameAnalyzer.recordMove(gameId, fen, bestMove.san, 'ai');
       
       res.json({
         move: {
@@ -585,18 +588,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         eloChange
       }).returning();
 
-      // Trigger learning analysis
+      // Analyze complete game for educational feedback
       try {
-        const { lessonGenerator } = await import("./lesson-generator");
-        await lessonGenerator.analyzeGameForLearning(userId, game.id, moves);
-        console.log(`Game analysis completed for game ${game.id}`);
+        const gameAnalysis = await gameAnalyzer.analyzeCompleteGame(
+          game.id.toString(),
+          userId,
+          result
+        );
+        
+        if (gameAnalysis) {
+          console.log(`Educational game analysis completed for game ${game.id}`);
+          // Store analysis in database or return with response for immediate display
+        }
       } catch (error) {
         console.log('Game analysis failed, but game stored:', error);
       }
 
+      // Get educational analysis for young minds
+      const gameAnalysis = await gameAnalyzer.analyzeCompleteGame(
+        game.id.toString(),
+        userId,
+        result
+      );
+
       res.json({ 
         message: "Game stored successfully",
-        gameId: game.id
+        gameId: game.id,
+        analysis: gameAnalysis // Include educational feedback
       });
     } catch (error) {
       console.error("Error storing game:", error);
