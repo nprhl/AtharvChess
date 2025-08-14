@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import GamePage from "@/pages/game";
 import LessonsPage from "@/pages/lessons";
 import LessonDetailPage from "@/pages/lesson-detail";
-import ProgressPage from "@/pages/progress";
+import ProgressPage from "@/pages/progress-demo";
 import SettingsPage from "@/pages/settings";
 import TipsPage from "@/pages/tips";
 import LoginPage from "@/pages/login";
