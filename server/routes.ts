@@ -8,10 +8,8 @@ import { tipService } from "./tip-service";
 import { gameIntegration } from "./game-integration";
 import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema } from "@shared/schema";
 import { z } from "zod";
-import { ChessAI, type Difficulty } from "./chess-ai";
-import { OllamaChessAI } from "./ollama-chess-ai";
-import { OpenAIChessAI } from "./openai-chess-ai";
 import { StockfishAI } from "./stockfish-ai";
+import type { Difficulty } from "./chess-ai";
 import { gameAnalyzer } from "./game-analyzer";
 import { MoveEvaluator } from "./move-evaluator";
 import { evals as evalRoutes } from "./routes/evals";
@@ -372,28 +370,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let bestMove = null;
       let aiEngine = 'stockfish';
 
-      // Try Stockfish first for world-class chess play
-      try {
-        console.log(`Using Stockfish with difficulty: ${difficulty}`);
-        const stockfishAI = new StockfishAI(difficulty as Difficulty);
-        bestMove = await stockfishAI.getBestMove(fen);
-        if (bestMove) {
-          aiEngine = 'stockfish';
-          console.log(`Stockfish (${difficulty}) played: ${bestMove.san}`);
-        } else {
-          console.log('Stockfish failed, falling back to traditional engine');
-        }
-      } catch (error) {
-        console.log('Stockfish not available:', error);
-      }
-
-      // Fallback to Traditional ChessAI if Stockfish fails
-      if (!bestMove) {
-        console.log(`Fallback to traditional ChessAI with difficulty: ${difficulty}`);
-        const traditionalAI = new ChessAI(difficulty as Difficulty);
-        bestMove = traditionalAI.getBestMove(fen);
-        aiEngine = 'traditional';
-        console.log(`Traditional AI (${difficulty}) played: ${bestMove?.san}`);
+      // Use Stockfish as the only chess engine
+      console.log(`Using Stockfish with difficulty: ${difficulty}`);
+      const stockfishAI = new StockfishAI(difficulty as Difficulty);
+      bestMove = await stockfishAI.getBestMove(fen);
+      
+      if (bestMove) {
+        aiEngine = 'stockfish';
+        console.log(`Stockfish (${difficulty}) played: ${bestMove.san}`);
+      } else {
+        console.log('Stockfish failed to generate move');
       }
       
       if (!bestMove) {
