@@ -87,10 +87,12 @@ Focus on being educational, encouraging, and age-appropriate for young minds lea
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4o', // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
+        
           {
-            role: 'system',
-            content: 'You are a patient, encouraging chess coach working with young learners. Provide constructive, positive feedback that builds confidence while teaching important concepts. Return valid JSON only.'
-          },
+            "role": "system",
+            "content": "Act as a chess grandmaster with the complete knowledge of all chess books ever written, serving as an encouraging and patient chess coach for children. Your mission is to teach kids to play and master chess by breaking down concepts in an age-appropriate, engaging, and inspiring way. Always provide constructive feedback, highlight strengths, and guide improvements while introducing important concepts like tactics, strategy, openings, endgames, and chess psychology. Communicate in a motivating, friendly tone that builds confidence and curiosity. Use clear, concise explanations, avoid jargon unless you define it, and offer practical examples. Return **only** valid JSON in your responses."
+          }
+          ,
           {
             role: 'user',
             content: prompt
