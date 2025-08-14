@@ -9,6 +9,8 @@ import { useChessGame } from "@/hooks/use-chess-game";
 import { useEffect, useCallback } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Undo, HelpCircle, RotateCcw } from "lucide-react";
+import { Undo, HelpCircle, RotateCcw, X, Lightbulb } from "lucide-react";
 
 export default function GamePage() {
   const [settings, setSettings] = useLocalStorage('chess-settings', {
@@ -178,17 +180,54 @@ export default function GamePage() {
 
       {/* Bottom Section - Fixed */}
       <div className="flex-shrink-0 space-y-3">
-        {/* AI Hint Card */}
+        {/* Mobile-Friendly Hint Toast */}
         {showHint && currentHint && (
-          <AIHintCard 
-            hint={currentHint}
-            onClose={() => {
-              setShowHint(false);
-              setCurrentHint(null);
-              setSuggestedMove(null);
-            }}
-            onShowMove={handleShowMove}
-          />
+          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border border-blue-200 dark:border-blue-800">
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4 text-blue-600" />
+                  <Badge variant="secondary" className="text-xs">AI Hint</Badge>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0"
+                  onClick={() => {
+                    setShowHint(false);
+                    setCurrentHint(null);
+                    setSuggestedMove(null);
+                  }}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+              <p className="text-sm text-foreground mb-3">{currentHint}</p>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowHint(false);
+                    setCurrentHint(null);
+                    setSuggestedMove(null);
+                  }}
+                >
+                  Got it
+                </Button>
+                {suggestedMove && (
+                  <Button 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={handleShowMove}
+                  >
+                    Show Move
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Game Controls */}

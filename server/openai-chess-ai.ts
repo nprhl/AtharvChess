@@ -73,6 +73,11 @@ export class OpenAIChessAI {
 
     const prompt = this.constructPrompt(fen, moveList, gameHistory, this.difficulty);
     
+    // Add timeout for faster response
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('AI move timeout')), 8000); // 8 second timeout
+    });
+    
     console.log('OpenAI prompt being sent:', prompt.substring(0, 300) + '...');
 
     try {
@@ -97,14 +102,17 @@ export class OpenAIChessAI {
 
       // GPT-5 has different parameter support
       if (model.startsWith('gpt-5')) {
-        completionParams.max_completion_tokens = 150;
+        completionParams.max_completion_tokens = 50; // Reduced for speed
         // GPT-5 only supports default temperature (1.0)
       } else {
-        completionParams.max_tokens = 150;
+        completionParams.max_tokens = 50; // Reduced for speed
         completionParams.temperature = this.getTemperature();
       }
 
-      const response = await this.openai.chat.completions.create(completionParams);
+      const response = await Promise.race([
+        this.openai.chat.completions.create(completionParams),
+        timeoutPromise
+      ]);
 
       const content = response.choices[0].message.content;
       if (!content) {
