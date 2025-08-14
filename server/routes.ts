@@ -382,9 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No valid moves available" });
       }
 
-      // Record AI move for end-of-game analysis
-      const gameId = req.body.gameId || 'current';
-      gameAnalyzer.recordMove(gameId, fen, bestMove.san, 'ai');
+      // OpenAI analysis suspended - no move recording needed
       
       res.json({
         move: {
@@ -588,33 +586,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         eloChange
       }).returning();
 
-      // Analyze complete game for educational feedback
-      try {
-        const gameAnalysis = await gameAnalyzer.analyzeCompleteGame(
-          game.id.toString(),
-          userId,
-          result
-        );
-        
-        if (gameAnalysis) {
-          console.log(`Educational game analysis completed for game ${game.id}`);
-          // Store analysis in database or return with response for immediate display
-        }
-      } catch (error) {
-        console.log('Game analysis failed, but game stored:', error);
-      }
-
-      // Get educational analysis for young minds
-      const gameAnalysis = await gameAnalyzer.analyzeCompleteGame(
-        game.id.toString(),
-        userId,
-        result
-      );
+      // OpenAI analysis suspended - game stored without analysis
+      console.log(`Game ${game.id} stored successfully without AI analysis`);
 
       res.json({ 
         message: "Game stored successfully",
-        gameId: game.id,
-        analysis: gameAnalysis // Include educational feedback
+        gameId: game.id
       });
     } catch (error) {
       console.error("Error storing game:", error);

@@ -14,10 +14,9 @@ export function registerGameMoveRoutes(app: Express) {
 
       const { from, to, fen, san, promotion, gameId = 'current' } = req.body;
       
-      // Record player move for end-of-game analysis
-      gameAnalyzer.recordMove(gameId, fen, san, 'human');
+      // OpenAI analysis suspended - no move recording needed
       
-      console.log(`Player ${userId} moved: ${san} (${from}-${to}) - recorded for analysis`);
+      console.log(`Player ${userId} moved: ${san} (${from}-${to})`);
       
       res.json({ success: true });
     } catch (error) {

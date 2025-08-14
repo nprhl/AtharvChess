@@ -49,10 +49,9 @@ export class GameAnalyzer {
 
   // Analyze complete game at the end for educational feedback
   public async analyzeCompleteGame(gameId: string, userId: number, result: string): Promise<GameAnalysisReport | null> {
-    if (!process.env.OPENAI_API_KEY) {
-      console.log('OpenAI not available for game analysis');
-      return null;
-    }
+    // OpenAI analysis suspended - using local engine only
+    console.log('OpenAI analysis suspended - using local engine only');
+    return null;
 
     const moves = this.gameMovesBuffer.get(gameId);
     if (!moves || moves.length === 0) {
