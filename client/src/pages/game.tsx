@@ -63,10 +63,13 @@ export default function GamePage() {
   const [showMoveEvaluation, setShowMoveEvaluation] = useState(false);
   const [lastMoveSan, setLastMoveSan] = useState('');
   
-  const { evaluation, isAnalyzing } = useStockfishMoveEvaluation({
-    fen: game.fen(),
-    lastMoveSan
-  });
+  // Temporarily disabled move evaluation
+  // const { evaluation, isAnalyzing } = useStockfishMoveEvaluation({
+  //   fen: game.fen(),
+  //   lastMoveSan
+  // });
+  const evaluation = null;
+  const isAnalyzing = false;
 
   // Update move SAN when history changes
   useEffect(() => {
@@ -283,13 +286,13 @@ export default function GamePage() {
         )}
       </div>
 
-      {/* Stockfish Move Evaluation Display */}
-      <MoveEvaluationDisplay
+      {/* Stockfish Move Evaluation Display - Temporarily Disabled */}
+      {/* <MoveEvaluationDisplay
         evaluation={evaluation}
         moveSan={lastMoveSan}
         onDismiss={dismissMoveEvaluation}
         isVisible={showMoveEvaluation && evaluation !== null}
-      />
+      /> */}
 
       {/* Pawn Promotion Dialog */}
       <PromotionDialog

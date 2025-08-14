@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Lightbulb, X } from "lucide-react";
+import { Lightbulb , X } from "lucide-react";
 
 interface AIHintCardProps {
   hint: string;
