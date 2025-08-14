@@ -50,6 +50,7 @@ export default function GamePage() {
     isComputerThinking,
     gameMode,
     playerColor,
+    lastMove,
     promotionPending,
     handlePromotion,
     cancelPromotion
@@ -175,6 +176,7 @@ export default function GamePage() {
           game={game}
           onMove={makeMove}
           getValidMoves={getValidMoves}
+          lastMove={lastMove}
           disabled={isGameOver() || isComputerThinking || (gameMode === 'pvc' && turn !== playerColor)}
         />
       </div>

@@ -31,6 +31,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
   const [currentGameMode] = useState(gameMode);
   const [currentDifficulty] = useState(difficulty);
   const [currentPlayerColor] = useState(playerColor);
+  const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   // Removed move evaluation state - now handled by Stockfish analysis
   const [promotionPending, setPromotionPending] = useState<{
     from: Square;
@@ -93,6 +94,8 @@ export function useChessGame(options: UseChessGameOptions = {}) {
         const data = await response.json();
         const success = gameEngine.makeMove(data.move.from, data.move.to, data.move.promotion);
         if (success) {
+          // Update last move for highlighting (computer move)
+          setLastMove({ from: data.move.from, to: data.move.to });
           triggerUpdate();
           saveGameState();
           return true;
@@ -136,7 +139,10 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     
     if (success) {
       const fenAfter = gameEngine.fen();
-      const lastMove = gameEngine.history[gameEngine.history.length - 1];
+      const lastMoveHistory = gameEngine.history[gameEngine.history.length - 1];
+      
+      // Update last move for highlighting
+      setLastMove({ from, to });
       
       triggerUpdate();
       saveGameState();
@@ -212,6 +218,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     isComputerThinking,
     gameMode: currentGameMode,
     playerColor: currentPlayerColor,
+    lastMove,
     // Move evaluation removed - now handled by Stockfish
     promotionPending,
     handlePromotion,

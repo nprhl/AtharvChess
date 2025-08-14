@@ -11,6 +11,7 @@ interface ChessBoardProps {
   game: Chess;
   onMove: (from: Square, to: Square) => boolean;
   getValidMoves: (square: Square) => Square[];
+  lastMove?: { from: Square; to: Square } | null;
   disabled?: boolean;
 }
 
@@ -19,7 +20,7 @@ const PIECE_SYMBOLS = {
   'bp': '♟︎', 'br': '♜', 'bn': '♞', 'bb': '♝', 'bq': '♛', 'bk': '♚'
 };
 
-export default function ChessBoard({ game, onMove, getValidMoves, disabled = false }: ChessBoardProps) {
+export default function ChessBoard({ game, onMove, getValidMoves, lastMove, disabled = false }: ChessBoardProps) {
   const [draggedPiece, setDraggedPiece] = useState<{
     piece: ChessPiece;
     square: Square;
@@ -79,12 +80,15 @@ export default function ChessBoard({ game, onMove, getValidMoves, disabled = fal
     const isValidMove = validMoves.includes(square);
     const isDragOver = dragOverSquare === square;
     const isDragging = draggedPiece?.square === square;
+    const isLastMoveFrom = lastMove?.from === square;
+    const isLastMoveTo = lastMove?.to === square;
 
     const squareClasses = [
       "chess-square flex items-center justify-center relative w-full h-full",
       isLight ? "bg-amber-100" : "bg-amber-700", 
       isValidMove && "valid-move",
-      isDragOver && validMoves.includes(square) && "drop-zone"
+      isDragOver && validMoves.includes(square) && "drop-zone",
+      (isLastMoveFrom || isLastMoveTo) && "last-move-highlight"
     ].filter(Boolean).join(" ");
 
     const pieceSymbol = piece ? PIECE_SYMBOLS[`${piece.color}${piece.type}` as keyof typeof PIECE_SYMBOLS] : null;
