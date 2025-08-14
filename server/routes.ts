@@ -11,6 +11,7 @@ import { z } from "zod";
 import { ChessAI, type Difficulty } from "./chess-ai";
 import { OllamaChessAI } from "./ollama-chess-ai";
 import { OpenAIChessAI } from "./openai-chess-ai";
+import { StockfishAI } from "./stockfish-ai";
 import { gameAnalyzer } from "./game-analyzer";
 import { MoveEvaluator } from "./move-evaluator";
 import { evals as evalRoutes } from "./routes/evals";
@@ -369,14 +370,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let bestMove = null;
-      let aiEngine = 'traditional';
+      let aiEngine = 'stockfish';
 
-      // Use Traditional ChessAI as primary engine for fast moves
-      console.log(`Using fast traditional ChessAI with difficulty: ${difficulty}`);
-      const traditionalAI = new ChessAI(difficulty as Difficulty);
-      bestMove = traditionalAI.getBestMove(fen);
-      aiEngine = 'traditional';
-      console.log(`Traditional AI (${difficulty}) played: ${bestMove?.san}`);
+      // Try Stockfish first for world-class chess play
+      try {
+        console.log(`Using Stockfish with difficulty: ${difficulty}`);
+        const stockfishAI = new StockfishAI(difficulty as Difficulty);
+        bestMove = await stockfishAI.getBestMove(fen);
+        if (bestMove) {
+          aiEngine = 'stockfish';
+          console.log(`Stockfish (${difficulty}) played: ${bestMove.san}`);
+        } else {
+          console.log('Stockfish failed, falling back to traditional engine');
+        }
+      } catch (error) {
+        console.log('Stockfish not available:', error);
+      }
+
+      // Fallback to Traditional ChessAI if Stockfish fails
+      if (!bestMove) {
+        console.log(`Fallback to traditional ChessAI with difficulty: ${difficulty}`);
+        const traditionalAI = new ChessAI(difficulty as Difficulty);
+        bestMove = traditionalAI.getBestMove(fen);
+        aiEngine = 'traditional';
+        console.log(`Traditional AI (${difficulty}) played: ${bestMove?.san}`);
+      }
       
       if (!bestMove) {
         return res.status(400).json({ message: "No valid moves available" });
