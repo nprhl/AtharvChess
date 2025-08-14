@@ -158,9 +158,9 @@ export default function GamePage() {
             'bg-emerald-400 animate-pulse'
           }`} />
           <span className="text-sm font-medium text-card-foreground">
-            {isComputerThinking ? 'Computer is thinking...' :
+            {isComputerThinking ? 'Coach is thinking...' :
              gameMode === 'pvc' ? 
-               (turn === playerColor ? 'Your Turn' : 'Computer\'s Turn') :
+               (turn === playerColor ? 'Your Turn' : 'Coach\'s Turn') :
                (turn === 'w' ? 'White\'s Turn' : 'Black\'s Turn')
             }
           </span>
