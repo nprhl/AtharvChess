@@ -54,7 +54,7 @@ function Router() {
   return (
     <div className="flex flex-col min-h-screen max-w-md mx-auto bg-background shadow-2xl">
       <HeaderNavigation />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pb-20">
         <Switch>
           <Route path="/" component={GamePage} />
           <Route path="/lessons" component={LessonsPage} />

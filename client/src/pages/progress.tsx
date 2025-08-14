@@ -11,10 +11,10 @@ export default function ProgressPage() {
       username: "ChessLearner",
       eloRating: 1185,
       gamesWon: 23,
-      gamesLost: 31,
+      gamesLost: 21,
       gamesDrawn: 4,
       puzzlesSolved: 87,
-      lessonsCompleted: 12
+      lessonsCompleted: 9
     },
     skillAreas: [
       {
@@ -28,7 +28,7 @@ export default function ProgressPage() {
       {
         name: "Middle Game Tactics",
         level: "Intermediate", 
-        progress: 72,
+        progress: 73,
         description: "Great tactical awareness! You're spotting pins, forks, and discovered attacks consistently.",
         recentImprovement: "+8% in last month",
         color: "bg-blue-500"
@@ -36,7 +36,7 @@ export default function ProgressPage() {
       {
         name: "Endgame Technique",
         level: "Beginner",
-        progress: 35,
+        progress: 30,
         description: "Currently learning endgame fundamentals. Focus on king and pawn endings.",
         recentImprovement: "+12% in last month",
         color: "bg-orange-500"
@@ -44,7 +44,7 @@ export default function ProgressPage() {
       {
         name: "Positional Understanding",
         level: "Beginner",
-        progress: 28,
+        progress: 27,
         description: "Building awareness of pawn structure and piece coordination.",
         recentImprovement: "+5% in last month", 
         color: "bg-purple-500"
