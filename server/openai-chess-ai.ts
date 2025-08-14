@@ -102,10 +102,10 @@ export class OpenAIChessAI {
 
       // GPT-5 has different parameter support
       if (model.startsWith('gpt-5')) {
-        completionParams.max_completion_tokens = 50; // Reduced for speed
+        completionParams.max_completion_tokens = 100; // Increased to avoid truncated JSON
         // GPT-5 only supports default temperature (1.0)
       } else {
-        completionParams.max_tokens = 50; // Reduced for speed
+        completionParams.max_tokens = 100; // Increased to avoid truncated JSON
         completionParams.temperature = this.getTemperature();
       }
 
