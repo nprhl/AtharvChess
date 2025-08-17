@@ -13,6 +13,7 @@ interface ChessBoardProps {
   getValidMoves: (square: Square) => Square[];
   lastMove?: { from: Square; to: Square } | null;
   disabled?: boolean;
+  flipped?: boolean; // Flip board for black player perspective
 }
 
 const PIECE_SYMBOLS = {
@@ -20,7 +21,7 @@ const PIECE_SYMBOLS = {
   'bp': '♟︎', 'br': '♜', 'bn': '♞', 'bb': '♝', 'bq': '♛', 'bk': '♚'
 };
 
-export default function ChessBoard({ game, onMove, getValidMoves, lastMove, disabled = false }: ChessBoardProps) {
+export default function ChessBoard({ game, onMove, getValidMoves, lastMove, disabled = false, flipped = false }: ChessBoardProps) {
   const [draggedPiece, setDraggedPiece] = useState<{
     piece: ChessPiece;
     square: Square;
@@ -31,8 +32,9 @@ export default function ChessBoard({ game, onMove, getValidMoves, lastMove, disa
 
   const board = game.board();
   
-  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-  const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+  // Flip board orientation based on player color
+  const files = flipped ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  const ranks = flipped ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1'];
 
   const getSquareName = (file: number, rank: number): Square => {
     return `${files[file]}${ranks[rank]}` as Square;

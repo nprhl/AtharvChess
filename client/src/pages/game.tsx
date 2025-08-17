@@ -178,6 +178,7 @@ export default function GamePage() {
           getValidMoves={getValidMoves}
           lastMove={lastMove}
           disabled={isGameOver() || isComputerThinking || (gameMode === 'pvc' && turn !== playerColor)}
+          flipped={settings.playerColor === 'b'}
         />
       </div>
 
