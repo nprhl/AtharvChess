@@ -28,9 +28,9 @@ export function useChessGame(options: UseChessGameOptions = {}) {
   const [gameEngine] = useState(() => new ChessGameEngine(initialFen));
   const [, forceUpdate] = useState(0);
   const [isComputerThinking, setIsComputerThinking] = useState(false);
-  const [currentGameMode] = useState(gameMode);
-  const [currentDifficulty] = useState(difficulty);
-  const [currentPlayerColor] = useState(playerColor);
+  const [currentGameMode, setCurrentGameMode] = useState(gameMode);
+  const [currentDifficulty, setCurrentDifficulty] = useState(difficulty);
+  const [currentPlayerColor, setCurrentPlayerColor] = useState(playerColor);
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   // Removed move evaluation state - now handled by Stockfish analysis
   const [promotionPending, setPromotionPending] = useState<{
@@ -53,6 +53,13 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     GameStorageManager.saveGame(gameState);
   }, [gameEngine]);
 
+  // Update settings when options change
+  useEffect(() => {
+    setCurrentGameMode(gameMode);
+    setCurrentDifficulty(difficulty);
+    setCurrentPlayerColor(playerColor);
+  }, [gameMode, difficulty, playerColor]);
+
   // Load saved game on mount
   useEffect(() => {
     const savedGame = GameStorageManager.loadGame();
@@ -63,6 +70,8 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       triggerUpdate();
     }
   }, [gameEngine, initialFen, triggerUpdate]);
+
+
 
   // Computer move function
   const makeComputerMove = useCallback(async (): Promise<boolean> => {
@@ -111,6 +120,16 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     
     return false;
   }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentDifficulty, currentPlayerColor, isComputerThinking]);
+
+  // Auto-make computer move when player chooses black (computer plays first as white)
+  useEffect(() => {
+    if (currentGameMode === 'pvc' && currentPlayerColor === 'b' && gameEngine.history.length === 0) {
+      // Computer should move first when player is black
+      setTimeout(() => {
+        makeComputerMove();
+      }, 500);
+    }
+  }, [currentGameMode, currentPlayerColor, gameEngine.history.length, makeComputerMove]);
 
   // Note: Move evaluation is now handled by Stockfish analysis instead of API calls
 
@@ -201,6 +220,8 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     triggerUpdate();
     GameStorageManager.clearGame();
   }, [gameEngine, triggerUpdate]);
+
+
 
   const loadGame = useCallback((fen: string): boolean => {
     const success = gameEngine.loadGame(fen);
