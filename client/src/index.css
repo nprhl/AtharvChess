@@ -169,6 +169,12 @@
     border-radius: 4px;
     z-index: 1;
   }
+
+  /* Ensure chess pieces appear above square labels */
+  .chess-piece {
+    z-index: 20;
+    position: relative;
+  }
   
   .nav-tab.active {
     background-color: hsl(220, 13%, 44%);

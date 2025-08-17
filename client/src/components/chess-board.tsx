@@ -119,6 +119,13 @@ export default function ChessBoard({ game, onMove, getValidMoves, lastMove, disa
           }
         }}
       >
+        {/* Square label for learning - positioned in corner */}
+        <div className="absolute top-0.5 left-0.5 text-xs font-semibold opacity-60 pointer-events-none z-10">
+          <span className={isLight ? "text-amber-700" : "text-amber-100"}>
+            {square}
+          </span>
+        </div>
+        
         {piece && (
           <span
             className={`chess-piece ${pieceColorClass} ${pieceSizeClass} ${isDragging ? 'dragging' : ''}`}
