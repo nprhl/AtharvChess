@@ -266,8 +266,7 @@ export default function GamePage() {
               className="flex-1 bg-blue-600 hover:bg-blue-700"
               onClick={handleGetHint}
             >
-              <HelpCircle className="w-4 h-4 mr-2" />
-              Hint
+              <HelpCircle className="w-4 h-4" />
             </Button>
           )}
         </div>
