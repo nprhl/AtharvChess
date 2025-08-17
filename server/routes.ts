@@ -416,24 +416,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let bestMove = null;
       let aiEngine = 'traditional';
 
-      // Try Ollama first for better hint explanations
-      if (useOllama) {
-        try {
-          const ollamaAI = new OllamaChessAI(difficulty as Difficulty);
-          bestMove = await ollamaAI.getBestMove(fen);
-          if (bestMove) {
-            aiEngine = 'ollama';
-          }
-        } catch (error) {
-          console.log('Ollama unavailable for hints, falling back');
-        }
-      }
+      // Skip Ollama for hints since we're using pure Stockfish implementation
 
-      // Fallback to traditional engine
-      if (!bestMove) {
-        const traditionalAI = new ChessAI(difficulty as Difficulty);
-        bestMove = traditionalAI.getBestMove(fen);
-      }
+      // Use Stockfish engine for hints
+      const stockfishAI = new StockfishAI(difficulty as Difficulty);
+      bestMove = await stockfishAI.getBestMove(fen);
+      aiEngine = 'stockfish';
       
       if (!bestMove) {
         return res.status(400).json({ message: "No valid moves available" });
@@ -466,9 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           to: bestMove.to,
           promotion: bestMove.promotion || null
         },
-        explanation: aiEngine === 'ollama' ? 
-          "AI-powered analysis using advanced chess reasoning" : 
-          "Traditional chess engine analysis",
+        explanation: "Stockfish engine analysis with tactical depth",
         engine: aiEngine
       });
     } catch (error) {
