@@ -120,7 +120,7 @@ export default function ChessBoard({ game, onMove, getValidMoves, lastMove, disa
         }}
       >
         {/* Square label for learning - positioned in corner */}
-        <div className="absolute top-0.5 left-0.5 text-xs font-semibold opacity-60 pointer-events-none z-10">
+        <div className="absolute top-0.5 left-0.5 text-[10px] font-semibold opacity-60 pointer-events-none z-10">
           <span className={isLight ? "text-amber-700" : "text-amber-100"}>
             {square}
           </span>
