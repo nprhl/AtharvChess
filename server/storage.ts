@@ -58,10 +58,24 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private initialized = false;
+
   constructor() {
-    // Initialize with default content
-    this.initializeDefaultLessons();
-    this.initializeDefaultTips();
+    // Async initialization will be handled separately
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    
+    try {
+      // Initialize with default content
+      await this.initializeDefaultLessons();
+      await this.initializeDefaultTips();
+      this.initialized = true;
+    } catch (error) {
+      console.error('Failed to initialize storage:', error);
+      // Don't rethrow - allow app to start even if initialization fails
+    }
   }
 
   private async initializeDefaultLessons() {
@@ -805,4 +819,13 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+// Create storage instance
+const storageInstance = new DatabaseStorage();
+
+// Initialize storage and export it
+export const storage = storageInstance;
+
+// Export initialization function for server startup
+export async function initializeStorage(): Promise<void> {
+  await storageInstance.initialize();
+}
