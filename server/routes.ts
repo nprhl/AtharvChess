@@ -20,6 +20,9 @@ import { games, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { requirePermission, requireRole, PERMISSIONS, attachUserPermissions, getUserPermissions, assignRole, revokeRole } from "./rbac";
+import { registrationService } from "./tournament-registration";
+import { pairingAlgorithms } from "./pairing-algorithms";
+import { roundManagement } from "./round-management";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -1037,6 +1040,250 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     } catch (error) {
       console.error("Error fetching situational advice:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // ==================== TOURNAMENT REGISTRATION ROUTES ====================
+
+  // Register for tournament
+  app.post("/api/tournaments/:id/register", requirePermission('tournament:register'), async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      if (isNaN(tournamentId)) {
+        return res.status(400).json({ error: "Invalid tournament ID" });
+      }
+
+      const result = await registrationService.registerPlayer({
+        tournamentId,
+        sectionId: req.body.sectionId || 1, // Default section
+        userId: (req.user as any).id,
+        teamId: req.body.teamId,
+        parentConsentDate: req.body.parentConsentDate ? new Date(req.body.parentConsentDate) : undefined,
+        emergencyContact: req.body.emergencyContact,
+        medicalConditions: req.body.medicalConditions,
+        specialRequirements: req.body.specialRequirements
+      });
+
+      if (result.success) {
+        res.status(201).json(result);
+      } else {
+        res.status(400).json({ error: result.message });
+      }
+    } catch (error) {
+      console.error("Error registering for tournament:", error);
+      res.status(500).json({ error: "Failed to register for tournament" });
+    }
+  });
+
+  // Get tournament registrations
+  app.get("/api/tournaments/:id/registrations", requirePermission('tournament:manage'), async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      if (isNaN(tournamentId)) {
+        return res.status(400).json({ error: "Invalid tournament ID" });
+      }
+
+      const status = req.query.status as string;
+      const registrations = await registrationService.getTournamentRegistrations(tournamentId, status);
+      res.json(registrations);
+    } catch (error) {
+      console.error("Error fetching registrations:", error);
+      res.status(500).json({ error: "Failed to fetch registrations" });
+    }
+  });
+
+  // Approve registration
+  app.put("/api/registrations/:id/approve", requirePermission('tournament:manage'), async (req, res) => {
+    try {
+      const registrationId = parseInt(req.params.id);
+      if (isNaN(registrationId)) {
+        return res.status(400).json({ error: "Invalid registration ID" });
+      }
+
+      const success = await registrationService.approveRegistration(registrationId, (req.user as any).id);
+      if (success) {
+        res.json({ message: "Registration approved" });
+      } else {
+        res.status(400).json({ error: "Failed to approve registration" });
+      }
+    } catch (error) {
+      console.error("Error approving registration:", error);
+      res.status(500).json({ error: "Failed to approve registration" });
+    }
+  });
+
+  // Get registration statistics
+  app.get("/api/tournaments/:id/registration-stats", requirePermission('tournament:view'), async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      if (isNaN(tournamentId)) {
+        return res.status(400).json({ error: "Invalid tournament ID" });
+      }
+
+      const stats = await registrationService.getRegistrationStats(tournamentId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching registration stats:", error);
+      res.status(500).json({ error: "Failed to fetch registration stats" });
+    }
+  });
+
+  // Get user's tournament registrations
+  app.get("/api/users/me/registrations", requireAuth, async (req, res) => {
+    try {
+      const registrations = await registrationService.getUserRegistrations((req.user as any).id);
+      res.json(registrations);
+    } catch (error) {
+      console.error("Error fetching user registrations:", error);
+      res.status(500).json({ error: "Failed to fetch user registrations" });
+    }
+  });
+
+  // ==================== ROUND MANAGEMENT ROUTES ====================
+
+  // Create tournament round
+  app.post("/api/tournaments/:id/rounds", requirePermission('tournament:manage'), async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      if (isNaN(tournamentId)) {
+        return res.status(400).json({ error: "Invalid tournament ID" });
+      }
+
+      const result = await roundManagement.createRound({
+        tournamentId,
+        roundNumber: req.body.roundNumber,
+        name: req.body.name,
+        startTime: req.body.startTime ? new Date(req.body.startTime) : undefined,
+        endTime: req.body.endTime ? new Date(req.body.endTime) : undefined
+      });
+
+      if (result.success) {
+        res.status(201).json(result);
+      } else {
+        res.status(400).json({ error: result.message });
+      }
+    } catch (error) {
+      console.error("Error creating round:", error);
+      res.status(500).json({ error: "Failed to create round" });
+    }
+  });
+
+  // Generate pairings for round
+  app.post("/api/rounds/:id/pairings", requirePermission('tournament:manage'), async (req, res) => {
+    try {
+      const roundId = parseInt(req.params.id);
+      if (isNaN(roundId)) {
+        return res.status(400).json({ error: "Invalid round ID" });
+      }
+
+      const result = await roundManagement.generatePairings(roundId);
+      if (result.success) {
+        res.json({ message: "Pairings generated successfully" });
+      } else {
+        res.status(400).json({ error: result.message });
+      }
+    } catch (error) {
+      console.error("Error generating pairings:", error);
+      res.status(500).json({ error: "Failed to generate pairings" });
+    }
+  });
+
+  // Start round
+  app.put("/api/rounds/:id/start", requirePermission('tournament:manage'), async (req, res) => {
+    try {
+      const roundId = parseInt(req.params.id);
+      if (isNaN(roundId)) {
+        return res.status(400).json({ error: "Invalid round ID" });
+      }
+
+      const result = await roundManagement.startRound(roundId);
+      if (result.success) {
+        res.json({ message: "Round started successfully" });
+      } else {
+        res.status(400).json({ error: result.message });
+      }
+    } catch (error) {
+      console.error("Error starting round:", error);
+      res.status(500).json({ error: "Failed to start round" });
+    }
+  });
+
+  // Submit game result
+  app.put("/api/games/:id/result", requirePermission('tournament:participate'), async (req, res) => {
+    try {
+      const gameId = parseInt(req.params.id);
+      if (isNaN(gameId)) {
+        return res.status(400).json({ error: "Invalid game ID" });
+      }
+
+      const result = await roundManagement.submitGameResult({
+        gameId,
+        result: req.body.result,
+        moves: req.body.moves,
+        duration: req.body.duration,
+        resultReason: req.body.resultReason
+      });
+
+      if (result.success) {
+        res.json({ message: "Result submitted successfully" });
+      } else {
+        res.status(400).json({ error: result.message });
+      }
+    } catch (error) {
+      console.error("Error submitting game result:", error);
+      res.status(500).json({ error: "Failed to submit game result" });
+    }
+  });
+
+  // Get tournament rounds
+  app.get("/api/tournaments/:id/rounds", requirePermission('tournament:view'), async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      if (isNaN(tournamentId)) {
+        return res.status(400).json({ error: "Invalid tournament ID" });
+      }
+
+      const rounds = await roundManagement.getTournamentRounds(tournamentId);
+      res.json(rounds);
+    } catch (error) {
+      console.error("Error fetching rounds:", error);
+      res.status(500).json({ error: "Failed to fetch rounds" });
+    }
+  });
+
+  // Get round details
+  app.get("/api/rounds/:id", requirePermission('tournament:view'), async (req, res) => {
+    try {
+      const roundId = parseInt(req.params.id);
+      if (isNaN(roundId)) {
+        return res.status(400).json({ error: "Invalid round ID" });
+      }
+
+      const roundDetails = await roundManagement.getRoundDetails(roundId);
+      if (roundDetails) {
+        res.json(roundDetails);
+      } else {
+        res.status(404).json({ error: "Round not found" });
+      }
+    } catch (error) {
+      console.error("Error fetching round details:", error);
+      res.status(500).json({ error: "Failed to fetch round details" });
+    }
+  });
+
+  // Get tournament standings
+  app.get("/api/tournaments/:id/standings", requirePermission('tournament:view'), async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      if (isNaN(tournamentId)) {
+        return res.status(400).json({ error: "Invalid tournament ID" });
+      }
+
+      const standings = await roundManagement.getCurrentStandings(tournamentId);
+      res.json(standings);
+    } catch (error) {
+      console.error("Error fetching standings:", error);
+      res.status(500).json({ error: "Failed to fetch standings" });
     }
   });
 
