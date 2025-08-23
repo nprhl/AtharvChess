@@ -1,0 +1,145 @@
+Prompt for Replit Agent: School Tournament System (CircleChess-style)
+
+Context:
+This is a kids-focused chess learning app (AtharvChess). We need a school-friendly tournament system to track and manage gameplay both online and over-the-board (OTB). Keep things simple for teachers and parents, robust for organizers, and fun for students. Do not output code in your response—only implement within the project.
+
+General Guidance
+	•	Do not assume a new stack. Detect the current project’s framework and conventions; extend them consistently.
+	•	Be modular: clean separation of domain (tournament engine), API, UI, and data access.
+	•	Defaults should respect Asia/Kolkata (IST) time zone.
+	•	Prioritize mobile-first, accessibility (WCAG AA), and localization readiness (en-IN as default).
+	•	Plan for both online and OTB events.
+	•	Provide migrations, seed data, and fixtures for demo/testing.
+	•	Add feature flags or environment toggles where useful.
+
+⸻
+
+Task 1 — Product Scoping & Entities (No Code Output)
+	1.	Inventory existing user types; define/confirm roles: Super Admin, Organizer, Coach, Teacher, Parent, Student.
+	2.	Define core entities & relationships (ERD level):
+	•	School / Club, Team/Class, Tournament, Event (round), Section (rating/grade), Player, Coach/Teacher, Registration, Payment (optional), Pairing, Game/Result, Appeal/Arbiter note, Rating Snapshot, Certificate.
+	3.	Document lifecycle states:
+	•	Tournament: Draft → Published → Registration Open/Closed → In-Progress (Round n) → Completed → Archived.
+	•	Registration: Pending → Confirmed → Waitlisted → Cancelled → Refunded (if payments used).
+	4.	Output a short functional spec file in /docs/tournaments/functional-spec.md.
+
+Task 2 — Permissions & Auth Flows
+	1.	Add/extend RBAC so each role has minimal required permissions (e.g., Organizer manages tournaments; Teacher manages school rosters; Coach sees analytics; Parent sees child’s schedule/results).
+	2.	Support school domain verification (e.g., email domain or invite code).
+	3.	Write a permissions matrix in /docs/tournaments/permissions.md.
+
+Task 3 — Data Model & Migrations
+	1.	Create/extend models for all entities above with referential integrity, soft deletes, and audit fields (created_by, updated_by).
+	2.	Add migrations and seed data for: two schools, one club, sample coaches, 30 students, one Swiss event and one round-robin micro event.
+	3.	Put ERD diagram (exported image) in /docs/tournaments/erd.png.
+
+Task 4 — Tournament Creation Wizard (Organizer UI)
+	1.	A multi-step UI to create a tournament: Basics → Sections → Schedule → Registration → Policies → Publish.
+	2.	Options per section: format (Swiss, Round-Robin, Arena/Team Battle), time control, boards capacity, grade bands, rating limits, byes policy.
+	3.	IST-aware scheduling with clash detection for a school’s calendar.
+	4.	Save drafts; preview public page.
+
+Task 5 — Registration & Roster Management
+	1.	Public registration page: player selects school/team/section; parent/teacher approval flow.
+	2.	Optional payments toggle (keep interface; allow mock provider or “manual approval”).
+	3.	Bulk import via CSV/Excel for school rosters; deduplicate by email + DOB or federation ID if present.
+	4.	Waitlist & auto-promotion rules.
+	5.	Export to CSV/PDF for school admins.
+
+Task 6 — Pairings Engine & Rounds
+	1.	Implement pairing support: Swiss (accelerated optional), Round-Robin, team matchups.
+	2.	Round management: generate pairings, arbiters can re-pair, mark forfeit/byes, lock round.
+	3.	Board assignments printable sheets + digital boards list.
+	4.	Real-time updates (websocket or equivalent), but degrade gracefully with polling.
+	5.	Persist table numbers and history.
+
+Task 7 — Result Entry, Validation, and Appeals
+	1.	Result entry flows: self-report with confirmation, arbiter entry, or scanned scoresheet upload (store file + metadata; parsing can be a later phase).
+	2.	Validation rules (both players confirm; arbiter override).
+	3.	Simple appeals mechanism tied to pairings, with resolution log.
+
+Task 8 — Leaderboards, Standings, Tie-Breaks
+	1.	Live standings per section with common tie-breaks: Buchholz, Sonneborn-Berger, H2H, TB sum, etc.
+	2.	Awards page with podium summaries and printable certificates for participants and winners.
+	3.	Team standings for school competitions.
+
+Task 9 — Coach/Teacher Dashboards
+	1.	School dashboard: attendance, event calendar, registrations status, round-wise results, per-student progress.
+	2.	Player analytics: performance by phase (opening/middlegame/endgame), accuracy trend if engine analysis exists (hook only; show placeholder if not).
+	3.	Export PDFs for parent-teacher meetings.
+
+Task 10 — Notifications & Communications
+	1.	Notification channels: email now; prepare hooks for WhatsApp/SMS later (env-flagged).
+	2.	Event triggers: registration confirmed, round published, board change, result posted, award announcement.
+	3.	Digest option for parents (daily/weekly).
+	4.	Respect quiet hours (IST).
+
+Task 11 — Public Tournament Hubs
+	1.	Public pages: Overview, Pairings, Live Boards, Standings, Awards, Rules.
+	2.	Shareable links; OpenGraph metadata for social previews.
+	3.	“Add to Calendar” (ICS) per round/section.
+
+Task 12 — OTB + Online Bridging
+	1.	Support quick OTB QR code check-in per player.
+	2.	Simple attendance sheet and late arrival handling.
+	3.	(Optional stub) Ability to import PGN files after event to attach games to results.
+
+Task 13 — Anti-Abuse & Fair-Play (Phase 1)
+	1.	Basic policy text + acknowledgment checkbox for players/parents.
+	2.	Record device info hash for online rounds (privacy-safe).
+	3.	Add a flag flow for suspicious results (no engine integration yet; just logging & admin review).
+
+Task 14 — Accessibility, Localization, Mobile
+	1.	Ensure key screens meet WCAG AA (focus states, labels, color contrast).
+	2.	Localization scaffolding (keys/strings) with en-IN default; structure for Hindi/regional languages later.
+	3.	Mobile-first layouts for registration, pairings, standings, and result entry.
+
+Task 15 — APIs & Integrations
+	1.	Provide secure API endpoints for reading public tournament data (pairings/standings) and protected endpoints for organizers/teachers.
+	2.	Basic webhook spec for schools to mirror registrations/results into their LMS (document only if not implemented).
+	3.	Rate limiting and audit logs for admin actions.
+
+Task 16 — Settings, Feature Flags, and Secrets
+	1.	Add toggles for payments, WhatsApp/SMS, PGN import, certificates.
+	2.	Document environment variables in /docs/tournaments/env.md.
+	3.	Provide safe defaults for local dev.
+
+Task 17 — QA, Fixtures, and Demos
+	1.	Create demo tournaments (Swiss 5-round, RR 4-player) with scripted data flows from registration to awards.
+	2.	Add a playbook in /docs/tournaments/test-plan.md with user journeys for Organizer, Teacher, Parent, Student.
+	3.	Include a checklist for acceptance criteria (below).
+
+Task 18 — Documentation & Onboarding
+	1.	A concise Getting Started (Schools) guide: set up a school, create teams, open registration, run rounds, finalize awards.
+	2.	How-to videos placeholders with scripts; embed if infra allows, else link.
+	3.	Update project README with feature overview and links to tournament docs.
+
+⸻
+
+Acceptance Criteria (must be demonstrable end-to-end)
+	•	Organizer can create a multi-section tournament, publish it, receive registrations, run pairings each round, enter results, and close the event.
+	•	Standings & tie-breaks compute correctly and update live.
+	•	A Teacher can bulk-import a school roster, enroll students, and view dashboards.
+	•	Parents can see schedules, receive notifications, and view child results without seeing other students’ private data.
+	•	Data exports (CSV/PDF) work for registrations, pairings, standings, and awards.
+	•	Pages function well on mobile and pass basic accessibility checks.
+	•	All features respect IST time and localization scaffolding.
+	•	No leaking of PII in public endpoints; RBAC enforced.
+
+⸻
+
+Nice-to-Have (if time permits)
+	•	Certificates with merge fields (name, place, section, date).
+	•	Team events (board-order, team points, tie-breaks).
+	•	Calendar sync (download ICS for all rounds).
+	•	Lightweight engine accuracy trend overlay if PGNs are attached later.
+
+⸻
+
+Deliverables:
+	•	Implemented features within the existing repo (no code pasted into chat).
+	•	Updated docs at /docs/tournaments/*, migrations, seed data, demo tournaments, and a short CHANGELOG entry.
+
+⸻
+
+If anything in the current codebase conflicts with this plan, adapt the implementation but keep the user outcomes and acceptance criteria intact.
