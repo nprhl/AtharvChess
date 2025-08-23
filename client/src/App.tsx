@@ -17,6 +17,7 @@ import OnboardingPage from "@/pages/onboarding";
 import NotFound from "@/pages/not-found";
 import HeaderNavigation from "@/components/header-navigation";
 import BottomNavigation from "@/components/bottom-navigation";
+import SpeechCaption from "@/components/speech-caption";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -66,6 +67,7 @@ function Router() {
         </Switch>
       </main>
       <BottomNavigation />
+      <SpeechCaption />
     </div>
   );
 }

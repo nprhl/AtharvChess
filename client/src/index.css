@@ -189,4 +189,23 @@
   .animate-pulse-ring {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+  
+  /* TTS Animation Styles */
+  .animation-delay-150 {
+    animation-delay: 150ms;
+  }
+
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+
+  /* Chess piece animations for TTS */
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .chess-speaking-indicator {
+    animation: pulse-soft 1.5s infinite;
+  }
 }

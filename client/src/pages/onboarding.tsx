@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import ChessBoard from '@/components/chess-board';
+import { speakHint } from '@/lib/tts';
 
 interface Puzzle {
   id: number;
@@ -144,6 +145,8 @@ export default function OnboardingPage() {
     recordAttemptMutation.mutate(attemptData);
 
     if (solved) {
+      // Speak positive feedback for kids
+      speakHint('Excellent work! You solved the puzzle correctly. Great job!');
       toast({
         title: 'Correct!',
         description: 'Well done! Moving to next puzzle.',
@@ -156,6 +159,8 @@ export default function OnboardingPage() {
         }
       }, 1500);
     } else {
+      // Speak encouraging hint for kids
+      speakHint(`Not quite right, but keep trying! Try moving from ${expectedFrom} to ${expectedTo}. You can do it!`);
       toast({
         title: 'Not quite right',
         description: `Hint: Try moving from ${expectedFrom} to ${expectedTo}`,

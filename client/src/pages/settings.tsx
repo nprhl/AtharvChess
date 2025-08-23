@@ -7,6 +7,7 @@ import { Shield, GraduationCap, Clock, TrendingUp, RotateCcw, Palette, Gamepad2 
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/components/theme-provider";
+import TTSControls from '@/components/tts-controls';
 
 interface Settings {
   hintsEnabled: boolean;
@@ -279,6 +280,20 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Text-to-Speech Settings */}
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <h3 className="font-semibold mb-3 flex items-center text-card-foreground">
+            <svg className="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 6.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5 12a1 1 0 011-1h4.343a.5.5 0 01.354.146l6.364 6.364a.5.5 0 01.146.354V19a1 1 0 11-2 0v-1.293L9.293 12H6a1 1 0 01-1-1z" />
+            </svg>
+            Text-to-Speech
+          </h3>
+          
+          <TTSControls />
         </CardContent>
       </Card>
 

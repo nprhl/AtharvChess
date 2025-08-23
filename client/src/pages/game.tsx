@@ -4,6 +4,8 @@ import AIHintCard from "@/components/ai-hint-card";
 import MoveEvaluationDisplay from "@/components/move-evaluation";
 import PromotionDialog from "@/components/promotion-dialog";
 import GameSettingsDialog from "@/components/game-settings-dialog";
+import TTSControls from '@/components/tts-controls';
+import { speakMove } from '@/lib/tts';
 import { useStockfishMoveEvaluation } from "../hooks/useStockfishMoveEvaluation";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useEffect, useCallback } from "react";
@@ -72,13 +74,17 @@ export default function GamePage() {
   const evaluation = null;
   const isAnalyzing = false;
 
-  // Update move SAN when history changes
+  // Update move SAN when history changes and speak moves
   useEffect(() => {
     if (moveHistory.length > 0) {
       const lastMove = moveHistory[moveHistory.length - 1];
       if (lastMove && lastMove.san && lastMove.san !== lastMoveSan) {
         setLastMoveSan(lastMove.san);
         setShowMoveEvaluation(true);
+        
+        // Speak the move in a kid-friendly way
+        const moveColor = lastMove.color === 'w' ? 'white' : 'black';
+        speakMove(lastMove.san, moveColor);
       }
     }
   }, [moveHistory, lastMoveSan]);
@@ -195,6 +201,9 @@ export default function GamePage() {
             onShowMove={handleShowMove}
           />
         )}
+
+        {/* TTS Controls */}
+        <TTSControls compact className="mb-2" />
 
         {/* Game Controls */}
         <div className="flex space-x-2">

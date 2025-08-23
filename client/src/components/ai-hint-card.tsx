@@ -1,6 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Lightbulb , X } from "lucide-react";
+import { Lightbulb , X, Volume2 } from "lucide-react";
+import { speakHint } from '@/lib/tts';
+import { useEffect } from 'react';
 
 interface AIHintCardProps {
   hint: string;
@@ -9,6 +11,17 @@ interface AIHintCardProps {
 }
 
 export default function AIHintCard({ hint, onClose, onShowMove }: AIHintCardProps) {
+  // Automatically speak the hint when it appears
+  useEffect(() => {
+    if (hint) {
+      speakHint(hint);
+    }
+  }, [hint]);
+
+  const handleSpeakAgain = () => {
+    speakHint(hint);
+  };
+
   return (
     <Card className="bg-gradient-to-r from-purple-600 to-blue-600 border-none">
       <CardContent className="p-4">
@@ -19,14 +32,27 @@ export default function AIHintCard({ hint, onClose, onShowMove }: AIHintCardProp
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-semibold text-sm text-white">AI Suggestion</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-6 h-6 p-0 text-white/70 hover:text-white hover:bg-white/10"
-                onClick={onClose}
-              >
-                <X className="w-3 h-3" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-6 h-6 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                  onClick={handleSpeakAgain}
+                  aria-label="Speak hint again"
+                  title="Hear hint again"
+                >
+                  <Volume2 className="w-3 h-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-6 h-6 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                  onClick={onClose}
+                  aria-label="Close hint"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
             </div>
             <p className="text-xs text-purple-100 leading-relaxed mb-2">
               {hint}
