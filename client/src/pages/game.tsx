@@ -5,7 +5,7 @@ import MoveEvaluationDisplay from "@/components/move-evaluation";
 import PromotionDialog from "@/components/promotion-dialog";
 import GameSettingsDialog from "@/components/game-settings-dialog";
 import TTSControls from '@/components/tts-controls';
-import { speakMove, speakEducationalFeedback } from '@/lib/tts';
+import { speakEducationalFeedback } from '@/lib/tts';
 import { useStockfishMoveEvaluation } from "../hooks/useStockfishMoveEvaluation";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useEffect, useCallback } from "react";
@@ -84,7 +84,7 @@ export default function GamePage() {
         
         // Speak the move in a kid-friendly way
         const moveColor = lastMove.color === 'w' ? 'white' : 'black';
-        speakMove(lastMove.san, moveColor);
+        // Move announcements disabled - only educational feedback will be spoken
         
         // Analyze the move for educational feedback (only human player moves)
         if (turn !== playerColor && previousFen) { 
