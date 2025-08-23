@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Undo, HelpCircle, RotateCcw } from "lucide-react";
+import { Undo, HelpCircle, RotateCcw, X } from "lucide-react";
 
 export default function GamePage() {
   const [settings, setSettings] = useLocalStorage('chess-settings', {
