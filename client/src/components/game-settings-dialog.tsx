@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Settings } from "lucide-react";
 import { useState } from "react";
 
@@ -19,11 +20,13 @@ interface GameSettingsDialogProps {
     gameMode: 'pvp' | 'pvc';
     aiDifficulty: 'beginner' | 'intermediate' | 'advanced';
     playerColor: 'w' | 'b';
+    moveAnnouncementsEnabled: boolean;
   };
   onSettingsChange: (settings: {
     gameMode: 'pvp' | 'pvc';
     aiDifficulty: 'beginner' | 'intermediate' | 'advanced';
     playerColor: 'w' | 'b';
+    moveAnnouncementsEnabled: boolean;
   }) => void;
   onNewGame: () => void;
 }
@@ -37,12 +40,14 @@ export default function GameSettingsDialog({
   const [gameMode, setGameMode] = useState(currentSettings.gameMode);
   const [aiDifficulty, setAiDifficulty] = useState(currentSettings.aiDifficulty);
   const [playerColor, setPlayerColor] = useState(currentSettings.playerColor);
+  const [moveAnnouncementsEnabled, setMoveAnnouncementsEnabled] = useState(currentSettings.moveAnnouncementsEnabled);
 
   const handleApplySettings = () => {
     onSettingsChange({
       gameMode,
       aiDifficulty,
-      playerColor
+      playerColor,
+      moveAnnouncementsEnabled
     });
     onNewGame(); // Start new game with new settings
     setOpen(false);
@@ -112,6 +117,24 @@ export default function GameSettingsDialog({
               </RadioGroup>
             </div>
           )}
+
+          {/* Voice Settings */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Voice Settings</Label>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm">Move Announcements</Label>
+                <div className="text-xs text-muted-foreground">
+                  Hear each move spoken aloud (e.g., "white moves pawn to e4")
+                </div>
+              </div>
+              <Switch
+                checked={moveAnnouncementsEnabled}
+                onCheckedChange={setMoveAnnouncementsEnabled}
+                aria-label="Toggle move announcements"
+              />
+            </div>
+          </div>
         </div>
 
         <DialogFooter>

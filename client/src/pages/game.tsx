@@ -5,7 +5,7 @@ import MoveEvaluationDisplay from "@/components/move-evaluation";
 import PromotionDialog from "@/components/promotion-dialog";
 import GameSettingsDialog from "@/components/game-settings-dialog";
 import TTSControls from '@/components/tts-controls';
-import { speakEducationalFeedback } from '@/lib/tts';
+import { speakMove, speakEducationalFeedback } from '@/lib/tts';
 import { useStockfishMoveEvaluation } from "../hooks/useStockfishMoveEvaluation";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useEffect, useCallback } from "react";
@@ -27,6 +27,7 @@ import { Undo, HelpCircle, RotateCcw, X } from "lucide-react";
 export default function GamePage() {
   const [settings, setSettings] = useLocalStorage('chess-settings', {
     hintsEnabled: true,
+    moveAnnouncementsEnabled: false,
     focusMode: false,
     progressTracking: true,
     dailyPlayTime: 30,
@@ -84,7 +85,10 @@ export default function GamePage() {
         
         // Speak the move in a kid-friendly way
         const moveColor = lastMove.color === 'w' ? 'white' : 'black';
-        // Move announcements disabled - only educational feedback will be spoken
+        // Speak move if announcements are enabled in settings
+        if (settings.moveAnnouncementsEnabled) {
+          speakMove(lastMove.san, moveColor);
+        }
         
         // Analyze the move for educational feedback (only human player moves)
         if (turn !== playerColor && previousFen) { 
@@ -190,6 +194,7 @@ export default function GamePage() {
     gameMode: 'pvp' | 'pvc';
     aiDifficulty: 'beginner' | 'intermediate' | 'advanced';
     playerColor: 'w' | 'b';
+    moveAnnouncementsEnabled: boolean;
   }) => {
     setSettings({
       ...settings,
@@ -310,7 +315,8 @@ export default function GamePage() {
             currentSettings={{
               gameMode: settings.gameMode,
               aiDifficulty: settings.aiDifficulty,
-              playerColor: settings.playerColor
+              playerColor: settings.playerColor,
+              moveAnnouncementsEnabled: settings.moveAnnouncementsEnabled
             }}
             onSettingsChange={handleSettingsChange}
             onNewGame={handleNewGame}
