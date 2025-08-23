@@ -11,6 +11,9 @@ import LessonDetailPage from "@/pages/lesson-detail";
 import ProgressPage from "@/pages/progress-demo";
 import SettingsPage from "@/pages/settings";
 import TipsPage from "@/pages/tips";
+import TournamentsPage from "@/pages/tournaments";
+import TournamentCreatePage from "@/pages/tournament-create";
+import OrganizationsPage from "@/pages/organizations";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import OnboardingPage from "@/pages/onboarding";
@@ -60,6 +63,9 @@ function Router() {
           <Route path="/lessons" component={LessonsPage} />
           <Route path="/lesson/:id" component={LessonDetailPage} />
           <Route path="/tips" component={TipsPage} />
+          <Route path="/tournaments" component={TournamentsPage} />
+          <Route path="/tournaments/create" component={TournamentCreatePage} />
+          <Route path="/organizations" component={OrganizationsPage} />
           <Route path="/progress" component={ProgressPage} />
           <Route path="/settings" component={SettingsPage} />
           <Route component={NotFound} />
