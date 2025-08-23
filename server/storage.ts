@@ -1,10 +1,13 @@
 import { 
   users, games, lessons, userLessonProgress, settings, puzzles, puzzleAttempts,
-  dailyTips, userTipProgress,
+  dailyTips, userTipProgress, organizations, userRoles, teams, teamMembers,
+  tournaments, tournamentSections, registrations, rounds, pairings, tournamentGames,
+  appeals, ratingSnapshots, certificates, notifications,
   type User, type InsertUser, type Game, type InsertGame,
   type Lesson, type InsertLesson, type UserLessonProgress, 
   type InsertUserLessonProgress, type Settings, type InsertSettings,
-  type Puzzle, type InsertPuzzle, type PuzzleAttempt, type InsertPuzzleAttempt
+  type Puzzle, type InsertPuzzle, type PuzzleAttempt, type InsertPuzzleAttempt,
+  type Organization, type InsertOrganization, type Tournament, type InsertTournament
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -55,6 +58,24 @@ export interface IStorage {
   rateTip(userId: number, tipId: number, rating: number): Promise<void>;
   getUserTipProgress(userId: number): Promise<any[]>;
   getUserBookmarkedTips(userId: number): Promise<any[]>;
+
+  // Tournament System
+  // Organizations
+  createOrganization(data: InsertOrganization): Promise<Organization>;
+  getOrganization(id: number): Promise<Organization | undefined>;
+  updateOrganization(id: number, updates: Partial<Organization>): Promise<Organization | undefined>;
+  getOrganizations(filters?: any): Promise<Organization[]>;
+
+  // User Roles
+  assignUserRole(userId: number, role: string, scope?: string, grantedBy?: number): Promise<any>;
+  getUserRoles(userId: number): Promise<any[]>;
+  revokeUserRole(userId: number, role: string, scope?: string): Promise<boolean>;
+
+  // Tournaments
+  createTournament(data: InsertTournament): Promise<Tournament>;
+  getTournament(id: number): Promise<Tournament | undefined>;
+  updateTournament(id: number, updates: Partial<Tournament>): Promise<Tournament | undefined>;
+  getTournaments(filters?: any): Promise<Tournament[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -816,6 +837,130 @@ export class DatabaseStorage implements IStorage {
     for (const tip of defaultTips) {
       await db.insert(dailyTips).values(tip);
     }
+  }
+
+  // ==================== TOURNAMENT SYSTEM IMPLEMENTATION ====================
+
+  // Organization methods
+  async createOrganization(data: InsertOrganization): Promise<Organization> {
+    const [organization] = await db
+      .insert(organizations)
+      .values(data)
+      .returning();
+    return organization;
+  }
+
+  async getOrganization(id: number): Promise<Organization | undefined> {
+    const [organization] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, id));
+    return organization || undefined;
+  }
+
+  async updateOrganization(id: number, updates: Partial<Organization>): Promise<Organization | undefined> {
+    const [organization] = await db
+      .update(organizations)
+      .set(updates)
+      .where(eq(organizations.id, id))
+      .returning();
+    return organization || undefined;
+  }
+
+  async getOrganizations(filters: any = {}): Promise<Organization[]> {
+    let query = db.select().from(organizations);
+    
+    if (filters.type) {
+      query = query.where(eq(organizations.type, filters.type));
+    }
+    
+    if (filters.isVerified !== undefined) {
+      query = query.where(eq(organizations.isVerified, filters.isVerified));
+    }
+    
+    return await query;
+  }
+
+  // User role methods
+  async assignUserRole(userId: number, role: string, scope?: string, grantedBy?: number): Promise<any> {
+    const [userRole] = await db
+      .insert(userRoles)
+      .values({
+        userId,
+        role,
+        scope: scope || 'global',
+        grantedBy,
+        isActive: true
+      })
+      .returning();
+    return userRole;
+  }
+
+  async getUserRoles(userId: number): Promise<any[]> {
+    return await db
+      .select()
+      .from(userRoles)
+      .where(and(
+        eq(userRoles.userId, userId),
+        eq(userRoles.isActive, true)
+      ));
+  }
+
+  async revokeUserRole(userId: number, role: string, scope?: string): Promise<boolean> {
+    try {
+      await db
+        .update(userRoles)
+        .set({ isActive: false })
+        .where(and(
+          eq(userRoles.userId, userId),
+          eq(userRoles.role, role),
+          scope ? eq(userRoles.scope, scope) : eq(userRoles.scope, 'global')
+        ));
+      return true;
+    } catch (error) {
+      console.error('Error revoking user role:', error);
+      return false;
+    }
+  }
+
+  // Tournament methods
+  async createTournament(data: InsertTournament): Promise<Tournament> {
+    const [tournament] = await db
+      .insert(tournaments)
+      .values(data)
+      .returning();
+    return tournament;
+  }
+
+  async getTournament(id: number): Promise<Tournament | undefined> {
+    const [tournament] = await db
+      .select()
+      .from(tournaments)
+      .where(eq(tournaments.id, id));
+    return tournament || undefined;
+  }
+
+  async updateTournament(id: number, updates: Partial<Tournament>): Promise<Tournament | undefined> {
+    const [tournament] = await db
+      .update(tournaments)
+      .set(updates)
+      .where(eq(tournaments.id, id))
+      .returning();
+    return tournament || undefined;
+  }
+
+  async getTournaments(filters: any = {}): Promise<Tournament[]> {
+    let query = db.select().from(tournaments);
+    
+    if (filters.organizerId) {
+      query = query.where(eq(tournaments.organizerId, filters.organizerId));
+    }
+    
+    if (filters.status) {
+      query = query.where(eq(tournaments.status, filters.status));
+    }
+    
+    return await query;
   }
 }
 

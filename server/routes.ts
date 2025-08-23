@@ -6,7 +6,7 @@ import { setupAuth, requireAuth, getCurrentUser, hashPassword } from "./auth";
 import { puzzleService } from "./puzzle-service";
 import { tipService } from "./tip-service";
 import { gameIntegration } from "./game-integration";
-import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema } from "@shared/schema";
+import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema, insertOrganizationSchema, insertTournamentSchema } from "@shared/schema";
 import { z } from "zod";
 import { StockfishAI } from "./stockfish-ai";
 import { OpenAIChessAI } from "./openai-chess-ai";
@@ -19,6 +19,7 @@ import { db } from "./db";
 import { games, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import OpenAI from "openai";
+import { requirePermission, requireRole, PERMISSIONS, attachUserPermissions, getUserPermissions, assignRole, revokeRole } from "./rbac";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -126,6 +127,224 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json({ message: "Logged out successfully" });
     });
+  });
+
+  // Add user permissions to all authenticated requests
+  app.use(attachUserPermissions);
+
+  // ==================== RBAC ROUTES ====================
+
+  // Get user's permissions and roles
+  app.get("/api/rbac/me", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { permissions, roles, scopes } = await getUserPermissions(user.id);
+      
+      res.json({
+        permissions,
+        roles,
+        scopes,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email
+        }
+      });
+    } catch (error) {
+      console.error("Error getting user permissions:", error);
+      res.status(500).json({ error: "Failed to get user permissions" });
+    }
+  });
+
+  // Assign role to user (requires USER_ASSIGN_ROLES permission)
+  app.post("/api/rbac/assign-role", requireAuth, requirePermission(PERMISSIONS.USER_ASSIGN_ROLES), async (req, res) => {
+    try {
+      const { userId, role, scope, expiresAt } = req.body;
+      const granter = req.user as any;
+      
+      if (!userId || !role) {
+        return res.status(400).json({ error: "userId and role are required" });
+      }
+
+      const success = await assignRole(userId, role, scope, granter.id, expiresAt ? new Date(expiresAt) : undefined);
+      
+      if (success) {
+        res.json({ message: "Role assigned successfully" });
+      } else {
+        res.status(500).json({ error: "Failed to assign role" });
+      }
+    } catch (error) {
+      console.error("Error assigning role:", error);
+      res.status(500).json({ error: "Failed to assign role" });
+    }
+  });
+
+  // Revoke role from user (requires USER_ASSIGN_ROLES permission)
+  app.post("/api/rbac/revoke-role", requireAuth, requirePermission(PERMISSIONS.USER_ASSIGN_ROLES), async (req, res) => {
+    try {
+      const { userId, role, scope } = req.body;
+      
+      if (!userId || !role) {
+        return res.status(400).json({ error: "userId and role are required" });
+      }
+
+      const success = await revokeRole(userId, role, scope);
+      
+      if (success) {
+        res.json({ message: "Role revoked successfully" });
+      } else {
+        res.status(500).json({ error: "Failed to revoke role" });
+      }
+    } catch (error) {
+      console.error("Error revoking role:", error);
+      res.status(500).json({ error: "Failed to revoke role" });
+    }
+  });
+
+  // Get user's roles (requires USER_VIEW_PII permission or own profile)
+  app.get("/api/rbac/user/:userId/roles", requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const currentUser = req.user as any;
+      
+      // Users can view their own roles, or those with permission can view others
+      if (currentUser.id !== userId) {
+        const hasPermission = (req as any).userPermissions?.includes(PERMISSIONS.USER_VIEW_PII);
+        if (!hasPermission) {
+          return res.status(403).json({ error: "Insufficient permissions" });
+        }
+      }
+
+      const roles = await storage.getUserRoles(userId);
+      res.json({ roles });
+    } catch (error) {
+      console.error("Error getting user roles:", error);
+      res.status(500).json({ error: "Failed to get user roles" });
+    }
+  });
+
+  // ==================== ORGANIZATION ROUTES ====================
+
+  // Create organization (requires ORG_MANAGE permission)
+  app.post("/api/organizations", requireAuth, requirePermission(PERMISSIONS.ORG_MANAGE), async (req, res) => {
+    try {
+      const orgData = insertOrganizationSchema.parse(req.body);
+      const organization = await storage.createOrganization(orgData);
+      res.status(201).json(organization);
+    } catch (error) {
+      console.error("Error creating organization:", error);
+      res.status(500).json({ error: "Failed to create organization" });
+    }
+  });
+
+  // Get organization
+  app.get("/api/organizations/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const organization = await storage.getOrganization(id);
+      
+      if (!organization) {
+        return res.status(404).json({ error: "Organization not found" });
+      }
+      
+      res.json(organization);
+    } catch (error) {
+      console.error("Error getting organization:", error);
+      res.status(500).json({ error: "Failed to get organization" });
+    }
+  });
+
+  // List organizations
+  app.get("/api/organizations", requireAuth, async (req, res) => {
+    try {
+      const filters = req.query as any;
+      const organizations = await storage.getOrganizations(filters);
+      res.json(organizations);
+    } catch (error) {
+      console.error("Error listing organizations:", error);
+      res.status(500).json({ error: "Failed to list organizations" });
+    }
+  });
+
+  // Update organization (requires ORG_MANAGE permission)
+  app.patch("/api/organizations/:id", requireAuth, requirePermission(PERMISSIONS.ORG_MANAGE), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const organization = await storage.updateOrganization(id, updates);
+      
+      if (!organization) {
+        return res.status(404).json({ error: "Organization not found" });
+      }
+      
+      res.json(organization);
+    } catch (error) {
+      console.error("Error updating organization:", error);
+      res.status(500).json({ error: "Failed to update organization" });
+    }
+  });
+
+  // ==================== TOURNAMENT ROUTES ====================
+
+  // Create tournament (requires TOURNAMENT_CREATE permission)
+  app.post("/api/tournaments", requireAuth, requirePermission(PERMISSIONS.TOURNAMENT_CREATE), async (req, res) => {
+    try {
+      const tournamentData = insertTournamentSchema.parse(req.body);
+      const tournament = await storage.createTournament(tournamentData);
+      res.status(201).json(tournament);
+    } catch (error) {
+      console.error("Error creating tournament:", error);
+      res.status(500).json({ error: "Failed to create tournament" });
+    }
+  });
+
+  // Get tournament
+  app.get("/api/tournaments/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const tournament = await storage.getTournament(id);
+      
+      if (!tournament) {
+        return res.status(404).json({ error: "Tournament not found" });
+      }
+      
+      res.json(tournament);
+    } catch (error) {
+      console.error("Error getting tournament:", error);
+      res.status(500).json({ error: "Failed to get tournament" });
+    }
+  });
+
+  // List tournaments
+  app.get("/api/tournaments", requireAuth, async (req, res) => {
+    try {
+      const filters = req.query as any;
+      const tournaments = await storage.getTournaments(filters);
+      res.json(tournaments);
+    } catch (error) {
+      console.error("Error listing tournaments:", error);
+      res.status(500).json({ error: "Failed to list tournaments" });
+    }
+  });
+
+  // Update tournament (requires TOURNAMENT_EDIT permission)
+  app.patch("/api/tournaments/:id", requireAuth, requirePermission(PERMISSIONS.TOURNAMENT_EDIT), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const tournament = await storage.updateTournament(id, updates);
+      
+      if (!tournament) {
+        return res.status(404).json({ error: "Tournament not found" });
+      }
+      
+      res.json(tournament);
+    } catch (error) {
+      console.error("Error updating tournament:", error);
+      res.status(500).json({ error: "Failed to update tournament" });
+    }
   });
 
   app.get("/api/auth/me", getCurrentUser, async (req, res) => {
