@@ -131,6 +131,269 @@ export class OpenAIChessAI {
     }
   }
 
+  // Educational hint generation for learning
+  public async getEducationalHint(fen: string, moveHistory: string[] = []): Promise<{
+    hint: string;
+    move: { from: string; to: string; promotion?: string | null };
+    explanation: string;
+    learningTips: string[];
+  } | null> {
+    try {
+      const isAvailable = await this.checkOpenAIAvailability();
+      if (!isAvailable) return null;
+
+      const chess = new Chess(fen);
+      const possibleMoves = chess.moves({ verbose: true });
+      
+      if (possibleMoves.length === 0) return null;
+
+      const gameHistoryStr = moveHistory.slice(-6).join(' ');
+      const prompt = this.constructEducationalPrompt(fen, possibleMoves, gameHistoryStr, this.difficulty);
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: "system",
+            content: "You are a friendly chess teacher helping kids learn chess. Be encouraging, educational, and explain concepts simply."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 300,
+        temperature: 0.7
+      });
+
+      const content = response.choices[0].message.content;
+      if (!content) return null;
+
+      const result = JSON.parse(content);
+      const bestMove = this.parseAIResponse(result.move, possibleMoves);
+      
+      if (!bestMove) return null;
+
+      return {
+        hint: result.hint || "Try this move to improve your position!",
+        move: {
+          from: bestMove.from,
+          to: bestMove.to,
+          promotion: bestMove.promotion || null
+        },
+        explanation: result.explanation || "This move follows good chess principles.",
+        learningTips: result.learningTips || ["Develop your pieces!", "Control the center!", "Keep your king safe!"]
+      };
+    } catch (error) {
+      console.error('Educational hint error:', error);
+      return null;
+    }
+  }
+
+  // Move analysis for blunder detection and learning
+  public async analyzeMoveForLearning(fen: string, moveToAnalyze: string, previousFen?: string, userElo: number = 1200): Promise<{
+    isBlunder: boolean;
+    isGoodMove: boolean;
+    feedback: string;
+    betterMoves?: string[];
+    explanation: string;
+    learningPoints: string[];
+  }> {
+    try {
+      const isAvailable = await this.checkOpenAIAvailability();
+      if (!isAvailable) {
+        return {
+          isBlunder: false,
+          isGoodMove: true,
+          feedback: "Nice move! Keep playing and learning!",
+          explanation: "Analysis unavailable, but keep practicing!",
+          learningPoints: ["Every move is a learning opportunity!"]
+        };
+      }
+
+      const prompt = this.constructMoveAnalysisPrompt(fen, moveToAnalyze, previousFen, userElo);
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: "system", 
+            content: "You are a patient chess teacher analyzing moves for kids. Be encouraging even when pointing out mistakes."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 400,
+        temperature: 0.6
+      });
+
+      const content = response.choices[0].message.content;
+      if (!content) throw new Error('No response content');
+
+      const result = JSON.parse(content);
+      
+      return {
+        isBlunder: result.isBlunder || false,
+        isGoodMove: result.isGoodMove || true,
+        feedback: result.feedback || "Nice try! Every move teaches us something.",
+        betterMoves: result.betterMoves || [],
+        explanation: result.explanation || "Chess is about learning from every move!",
+        learningPoints: result.learningPoints || ["Practice makes perfect!", "Think about piece safety!", "Look for tactics!"]
+      };
+    } catch (error) {
+      console.error('Move analysis error:', error);
+      return {
+        isBlunder: false,
+        isGoodMove: true,
+        feedback: "Keep playing and learning! Every move is progress.",
+        explanation: "Analysis unavailable, but you're doing great!",
+        learningPoints: ["Stay positive and keep learning!"]
+      };
+    }
+  }
+
+  // Interactive chess conversation
+  public async getChessConversationResponse(fen: string, question: string = "", context: string = "", userElo: number = 1200): Promise<{
+    answer: string;
+    suggestedMoves: string[];
+    learningPoints: string[];
+    followUpQuestions: string[];
+  }> {
+    try {
+      const isAvailable = await this.checkOpenAIAvailability();
+      if (!isAvailable) {
+        return {
+          answer: "I'd love to help, but I can't analyze the position right now. Keep practicing!",
+          suggestedMoves: [],
+          learningPoints: ["Practice makes perfect!"],
+          followUpQuestions: ["What's your favorite piece?", "Do you like attacking or defending?"]
+        };
+      }
+
+      const prompt = this.constructConversationPrompt(fen, question, context, userElo);
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: "system",
+            content: "You are a friendly chess coach talking to kids. Be encouraging, fun, and educational. Use simple language and chess concepts appropriate for children."
+          },
+          {
+            role: "user", 
+            content: prompt
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 500,
+        temperature: 0.8
+      });
+
+      const content = response.choices[0].message.content;
+      if (!content) throw new Error('No response content');
+
+      const result = JSON.parse(content);
+      
+      return {
+        answer: result.answer || "That's a great question! Keep thinking about chess positions.",
+        suggestedMoves: result.suggestedMoves || [],
+        learningPoints: result.learningPoints || ["Chess is fun to learn!"],
+        followUpQuestions: result.followUpQuestions || ["What would you like to know next?"]
+      };
+    } catch (error) {
+      console.error('Chess conversation error:', error);
+      return {
+        answer: "I'm having trouble thinking right now, but I love talking about chess with you! Keep asking questions.",
+        suggestedMoves: [],
+        learningPoints: ["Questions help us learn!"],
+        followUpQuestions: ["What's your favorite chess piece?"]
+      };
+    }
+  }
+
+  private constructEducationalPrompt(fen: string, possibleMoves: any[], gameHistory: string, difficulty: Difficulty): string {
+    const chess = new Chess(fen);
+    const moveList = possibleMoves.map(move => move.san).join(', ');
+    const turn = chess.turn() === 'w' ? 'white' : 'black';
+    
+    return `You are teaching chess to kids. Current position (FEN): ${fen}
+
+It's ${turn}'s turn to move.
+Recent moves: ${gameHistory || 'Game just started'}
+Legal moves: ${moveList}
+
+Difficulty level: ${difficulty}
+
+Please suggest the best educational move for a ${difficulty} level student and explain it in a kid-friendly way.
+
+Respond with JSON containing:
+{
+  "move": "best_move_in_algebraic_notation", 
+  "hint": "encouraging hint for kids explaining why this move is good",
+  "explanation": "simple explanation of what this move accomplishes",
+  "learningTips": ["tip1", "tip2", "tip3"] // general chess tips for kids
+}
+
+Make it fun and educational! Use simple language and be encouraging.`;
+  }
+
+  private constructMoveAnalysisPrompt(fen: string, moveToAnalyze: string, previousFen?: string, userElo: number = 1200): string {
+    const chess = new Chess(fen);
+    const turn = chess.turn() === 'w' ? 'white' : 'black';
+    
+    return `Analyze this chess move for a student with ELO ${userElo}:
+
+Current position: ${fen}
+Move played: ${moveToAnalyze}
+Previous position: ${previousFen || 'Not provided'}
+Player: ${turn}
+
+Please analyze if this is a good move, blunder, or somewhere in between. Consider the student's level and be educational but encouraging.
+
+Respond with JSON:
+{
+  "isBlunder": boolean, // true if major mistake
+  "isGoodMove": boolean, // true if solid/good move  
+  "feedback": "encouraging feedback for the player",
+  "betterMoves": ["alternative1", "alternative2"], // if move was poor
+  "explanation": "why this move works or doesn't work",
+  "learningPoints": ["lesson1", "lesson2", "lesson3"] // what to learn from this
+}
+
+Be supportive and educational for kids!`;
+  }
+
+  private constructConversationPrompt(fen: string, question: string, context: string, userElo: number): string {
+    const chess = new Chess(fen);
+    const turn = chess.turn() === 'w' ? 'white' : 'black';
+    const possibleMoves = chess.moves();
+    
+    return `You're chatting with a young chess student (ELO ~${userElo}) about this position:
+
+Position: ${fen}
+Turn: ${turn}
+Context: ${context}
+Student's question: "${question}"
+
+Available moves: ${possibleMoves.slice(0, 10).join(', ')}${possibleMoves.length > 10 ? '...' : ''}
+
+Have a friendly conversation about chess! Answer their question and provide helpful insights about the position.
+
+Respond with JSON:
+{
+  "answer": "friendly conversational response to their question",
+  "suggestedMoves": ["move1", "move2"], // moves you recommend they consider
+  "learningPoints": ["lesson1", "lesson2"], // what they can learn here  
+  "followUpQuestions": ["question1", "question2"] // questions to keep conversation going
+}
+
+Keep it fun, educational, and appropriate for kids!`;
+  }
+
   private constructPrompt(fen: string, moveList: string, gameHistory: string, difficulty: Difficulty): string {
     const basePrompt = `You are a chess engine playing as ${new Chess(fen).turn() === 'w' ? 'white' : 'black'}.
 

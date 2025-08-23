@@ -6,11 +6,12 @@ import { useEffect } from 'react';
 
 interface AIHintCardProps {
   hint: string;
+  learningTips?: string[];
   onClose: () => void;
   onShowMove: () => void;
 }
 
-export default function AIHintCard({ hint, onClose, onShowMove }: AIHintCardProps) {
+export default function AIHintCard({ hint, learningTips = [], onClose, onShowMove }: AIHintCardProps) {
   // Automatically speak the hint when it appears
   useEffect(() => {
     if (hint) {
@@ -57,6 +58,21 @@ export default function AIHintCard({ hint, onClose, onShowMove }: AIHintCardProp
             <p className="text-xs text-purple-100 leading-relaxed mb-2">
               {hint}
             </p>
+            
+            {learningTips && learningTips.length > 0 && (
+              <div className="mb-2">
+                <p className="text-xs font-semibold text-purple-100 mb-1">💡 Learning Tips:</p>
+                <ul className="text-xs text-purple-100 space-y-1">
+                  {learningTips.map((tip, index) => (
+                    <li key={index} className="flex items-start">
+                      <span className="mr-1">•</span>
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
             <Button
               size="sm"
               className="text-xs bg-white/20 hover:bg-white/30 text-white border-none"

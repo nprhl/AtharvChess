@@ -299,6 +299,19 @@ class TTSService {
     this.speakHint(friendlyMove);
   }
 
+  // Speak educational feedback and analysis
+  public speakEducationalFeedback(text: string): void {
+    if (!this.isSupported() || !this.settings.enabled || !text.trim()) {
+      return;
+    }
+
+    // Add a small delay before speaking educational feedback
+    // This gives time for the move sound to finish
+    setTimeout(() => {
+      this.speakHint(text);
+    }, 500);
+  }
+
   // Convert chess notation to natural speech
   private convertMoveToSpeech(move: string, color: 'white' | 'black'): string {
     // Basic move conversion for kid-friendly narration
@@ -348,3 +361,4 @@ export const speakHint = (text: string) => ttsService.speakHint(text);
 export const stopSpeaking = () => ttsService.stopSpeaking();
 export const replayLastHint = () => ttsService.replayLastHint();
 export const speakMove = (move: string, color: 'white' | 'black') => ttsService.speakMove(move, color);
+export const speakEducationalFeedback = (text: string) => ttsService.speakEducationalFeedback(text);

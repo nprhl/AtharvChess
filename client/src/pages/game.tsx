@@ -5,7 +5,7 @@ import MoveEvaluationDisplay from "@/components/move-evaluation";
 import PromotionDialog from "@/components/promotion-dialog";
 import GameSettingsDialog from "@/components/game-settings-dialog";
 import TTSControls from '@/components/tts-controls';
-import { speakMove } from '@/lib/tts';
+import { speakMove, speakEducationalFeedback } from '@/lib/tts';
 import { useStockfishMoveEvaluation } from "../hooks/useStockfishMoveEvaluation";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useEffect, useCallback } from "react";
@@ -85,9 +85,17 @@ export default function GamePage() {
         // Speak the move in a kid-friendly way
         const moveColor = lastMove.color === 'w' ? 'white' : 'black';
         speakMove(lastMove.san, moveColor);
+        
+        // Analyze the move for educational feedback (only human player moves)
+        if (turn !== playerColor && previousFen) { 
+          analyzeMoveForLearning(lastMove.san, game.fen(), previousFen);
+        }
+        
+        // Store current position as previous for next move
+        setPreviousFen(game.fen());
       }
     }
-  }, [moveHistory, lastMoveSan]);
+  }, [moveHistory, lastMoveSan, turn, playerColor, game]);
 
   const dismissMoveEvaluation = () => {
     setShowMoveEvaluation(false);
@@ -96,6 +104,44 @@ export default function GamePage() {
   const [showHint, setShowHint] = useState(false);
   const [currentHint, setCurrentHint] = useState<string | null>(null);
   const [suggestedMove, setSuggestedMove] = useState<{from: string, to: string, promotion?: string | null} | null>(null);
+  const [learningTips, setLearningTips] = useState<string[]>([]);
+  const [moveAnalysis, setMoveAnalysis] = useState<any>(null);
+  const [showMoveAnalysis, setShowMoveAnalysis] = useState(false);
+  const [previousFen, setPreviousFen] = useState<string | null>(null);
+
+  // Analyze moves for educational feedback
+  const analyzeMoveForLearning = async (moveSan: string, currentFen: string, prevFen?: string) => {
+    try {
+      const response = await fetch('/api/ai/analyze-move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          fen: currentFen,
+          moveToAnalyze: moveSan,
+          previousFen: prevFen,
+          difficulty: settings.aiDifficulty
+        })
+      });
+
+      if (response.ok) {
+        const analysis = await response.json();
+        setMoveAnalysis(analysis);
+        setShowMoveAnalysis(true);
+        
+        // Speak educational feedback about the move
+        if (analysis.isBlunder) {
+          speakEducationalFeedback(`Oops! That was a blunder. ${analysis.feedback}`);
+        } else if (analysis.isGoodMove) {
+          speakEducationalFeedback(`Great move! ${analysis.feedback}`);
+        } else {
+          speakEducationalFeedback(analysis.feedback);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to analyze move:', error);
+    }
+  };
 
   const handleGetHint = async () => {
     try {
@@ -105,7 +151,7 @@ export default function GamePage() {
         body: JSON.stringify({ 
           fen: game.fen(),
           difficulty: settings.aiDifficulty,
-          useOllama: true
+          moveHistory: moveHistory.map(m => m.san).slice(-6)
         })
       });
       
@@ -113,6 +159,7 @@ export default function GamePage() {
         const data = await response.json();
         setCurrentHint(data.hint);
         setSuggestedMove(data.move);
+        setLearningTips(data.learningTips || []);
         setShowHint(true);
       }
     } catch (error) {
@@ -193,6 +240,7 @@ export default function GamePage() {
         {showHint && currentHint && (
           <AIHintCard 
             hint={currentHint}
+            learningTips={learningTips}
             onClose={() => {
               setShowHint(false);
               setCurrentHint(null);
@@ -200,6 +248,57 @@ export default function GamePage() {
             }}
             onShowMove={handleShowMove}
           />
+        )}
+
+        {/* Move Analysis Display */}
+        {showMoveAnalysis && moveAnalysis && (
+          <div className={`p-4 rounded-lg border ${
+            moveAnalysis.isBlunder ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' : 
+            moveAnalysis.isGoodMove ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' : 
+            'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+          }`}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className={`font-semibold text-sm ${
+                moveAnalysis.isBlunder ? 'text-red-700 dark:text-red-300' : 
+                moveAnalysis.isGoodMove ? 'text-green-700 dark:text-green-300' : 
+                'text-blue-700 dark:text-blue-300'
+              }`}>
+                {moveAnalysis.isBlunder ? '⚠️ Learning Moment!' : 
+                 moveAnalysis.isGoodMove ? '✅ Great Move!' : 
+                 '💡 Move Analysis'}
+              </h3>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowMoveAnalysis(false)}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+            <p className="text-sm mb-2 text-gray-700 dark:text-gray-300">{moveAnalysis.feedback}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">{moveAnalysis.explanation}</p>
+            
+            {moveAnalysis.betterMoves && moveAnalysis.betterMoves.length > 0 && (
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                <strong>Better moves to consider:</strong> {moveAnalysis.betterMoves.join(', ')}
+              </div>
+            )}
+            
+            {moveAnalysis.learningPoints && moveAnalysis.learningPoints.length > 0 && (
+              <div className="mt-2">
+                <strong className="text-xs text-gray-700 dark:text-gray-300">Learning tips:</strong>
+                <ul className="text-xs mt-1 space-y-1 text-gray-600 dark:text-gray-400">
+                  {moveAnalysis.learningPoints.map((tip: string, index: number) => (
+                    <li key={index} className="flex items-start">
+                      <span className="mr-1">•</span>
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         )}
 
         {/* TTS Controls */}

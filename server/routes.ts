@@ -9,6 +9,7 @@ import { gameIntegration } from "./game-integration";
 import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema } from "@shared/schema";
 import { z } from "zod";
 import { StockfishAI } from "./stockfish-ai";
+import { OpenAIChessAI } from "./openai-chess-ai";
 import type { Difficulty } from "./chess-ai";
 import { gameAnalyzer } from "./game-analyzer";
 import { MoveEvaluator } from "./move-evaluator";
@@ -404,48 +405,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI hint endpoint with Ollama integration
+  // Educational AI hint endpoint with OpenAI integration for learning
   app.post("/api/ai/hint", async (req, res) => {
     try {
-      const { fen, difficulty = 'beginner', useOllama = true } = req.body;
+      const { fen, difficulty = 'beginner', moveHistory = [] } = req.body;
       
       if (!fen) {
         return res.status(400).json({ message: "FEN string is required" });
       }
 
-      let bestMove = null;
-      let aiEngine = 'traditional';
+      // Try OpenAI first for educational hints
+      const openaiAI = new OpenAIChessAI(difficulty as Difficulty);
+      const educationalHint = await openaiAI.getEducationalHint(fen, moveHistory);
+      
+      if (educationalHint) {
+        return res.json({
+          hint: educationalHint.hint,
+          move: educationalHint.move,
+          explanation: educationalHint.explanation,
+          learningTips: educationalHint.learningTips,
+          engine: 'openai-educational'
+        });
+      }
 
-      // Skip Ollama for hints since we're using pure Stockfish implementation
-
-      // Use Stockfish engine for hints
+      // Fallback to Stockfish with educational enhancement
       const stockfishAI = new StockfishAI(difficulty as Difficulty);
-      bestMove = await stockfishAI.getBestMove(fen);
-      aiEngine = 'stockfish';
+      const bestMove = await stockfishAI.getBestMove(fen);
       
       if (!bestMove) {
         return res.status(400).json({ message: "No valid moves available" });
       }
 
-      // Generate more sophisticated hints based on difficulty
-      const hints = difficulty === 'advanced' ? [
-        `Strong players would consider ${bestMove.san}. This move improves piece coordination and creates long-term advantages.`,
-        `The tactical sequence starting with ${bestMove.san} leads to a favorable position with better piece activity.`,
-        `Advanced analysis suggests ${bestMove.san} due to its strategic value and positional improvements.`,
-        `Consider ${bestMove.san} - this move follows strong opening principles and maintains initiative.`
+      // Generate educational hints for kids
+      const kidFriendlyHints = difficulty === 'advanced' ? [
+        `Great chess players love the move ${bestMove.san}! This move makes your pieces work together like a team and creates powerful plans for the future.`,
+        `Here's a clever idea: ${bestMove.san} starts a tactical sequence that gives you better piece activity. Can you see how your pieces become more powerful?`,
+        `Advanced tip: ${bestMove.san} is strong because it follows important chess principles. It improves your position and gives you more control over the board.`
       ] : difficulty === 'intermediate' ? [
-        `Try ${bestMove.san}! This move develops your pieces while maintaining good tactics.`,
-        `Consider ${bestMove.san}. This helps control key squares and improves your position.`,
-        `The move ${bestMove.san} creates tactical opportunities and follows good principles.`,
-        `Look for ${bestMove.san} - it strengthens your position and keeps pressure on your opponent.`
+        `Try ${bestMove.san}! This move develops your pieces nicely and creates good tactical opportunities. Think about how it makes your pieces stronger!`,
+        `Consider ${bestMove.san} - it helps you control important squares in the center and improves your position. This is what good chess players look for!`,
+        `The move ${bestMove.san} is smart because it follows chess principles while creating new possibilities. Can you see how it helps your position?`
       ] : [
-        `Try moving from ${bestMove.from} to ${bestMove.to}! This develops your pieces safely.`,
-        `Consider the move ${bestMove.san}. It's a good, simple move that improves your position.`,
-        `Look at ${bestMove.from}-${bestMove.to}. This move follows basic chess principles.`,
-        `The computer suggests ${bestMove.san}. It's a safe move that helps your development.`
+        `Try the move ${bestMove.san}! This move helps develop your pieces safely and follows the basic rules of chess. It's a great choice for building a strong position!`,
+        `Here's a helpful idea: ${bestMove.san} is a good move because it improves your pieces and keeps your king safe. Chess is about making your pieces work together!`,
+        `Consider moving from ${bestMove.from} to ${bestMove.to}. This follows chess principles like developing pieces and controlling the center. Great job thinking about good moves!`
       ];
       
-      const randomHint = hints[Math.floor(Math.random() * hints.length)];
+      const randomHint = kidFriendlyHints[Math.floor(Math.random() * kidFriendlyHints.length)];
       
       res.json({
         hint: randomHint,
@@ -454,12 +460,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
           to: bestMove.to,
           promotion: bestMove.promotion || null
         },
-        explanation: "Stockfish engine analysis with tactical depth",
-        engine: aiEngine
+        explanation: "Educational chess analysis designed for learning",
+        learningTips: ["Remember to develop your pieces!", "Control the center squares!", "Keep your king safe!"],
+        engine: 'stockfish-educational'
       });
     } catch (error) {
       console.error('AI hint error:', error);
       res.status(500).json({ message: "AI service unavailable" });
+    }
+  });
+
+  // New endpoint for move analysis and blunder detection
+  app.post("/api/ai/analyze-move", requireAuth, async (req, res) => {
+    try {
+      const { fen, moveToAnalyze, previousFen, difficulty = 'beginner' } = req.body;
+      const user = req.user as any;
+      
+      if (!fen || !moveToAnalyze) {
+        return res.status(400).json({ message: "Position and move are required" });
+      }
+
+      const openaiAI = new OpenAIChessAI(difficulty as Difficulty);
+      const analysis = await openaiAI.analyzeMoveForLearning(fen, moveToAnalyze, previousFen, user.eloRating);
+      
+      res.json(analysis);
+    } catch (error) {
+      console.error('Move analysis error:', error);
+      res.status(500).json({ message: "Analysis service unavailable" });
+    }
+  });
+
+  // New endpoint for interactive chess conversation
+  app.post("/api/ai/chess-conversation", requireAuth, async (req, res) => {
+    try {
+      const { fen, question, context = "", difficulty = 'beginner' } = req.body;
+      const user = req.user as any;
+      
+      if (!fen) {
+        return res.status(400).json({ message: "Position is required" });
+      }
+
+      const openaiAI = new OpenAIChessAI(difficulty as Difficulty);
+      const response = await openaiAI.getChessConversationResponse(fen, question, context, user.eloRating);
+      
+      res.json({
+        response: response.answer,
+        suggestedMoves: response.suggestedMoves,
+        learningPoints: response.learningPoints,
+        followUpQuestions: response.followUpQuestions
+      });
+    } catch (error) {
+      console.error('Chess conversation error:', error);
+      res.status(500).json({ message: "Conversation service unavailable" });
     }
   });
 
