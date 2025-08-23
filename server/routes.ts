@@ -1046,7 +1046,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   // ==================== TOURNAMENT REGISTRATION ROUTES ====================
 
   // Register for tournament
-  app.post("/api/tournaments/:id/register", requirePermission('tournament:register'), async (req, res) => {
+  app.post("/api/tournaments/:id/register", requireAuth, async (req, res) => {
     try {
       const tournamentId = parseInt(req.params.id);
       if (isNaN(tournamentId)) {
@@ -1076,7 +1076,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Get tournament registrations
-  app.get("/api/tournaments/:id/registrations", requirePermission('tournament:manage'), async (req, res) => {
+  app.get("/api/tournaments/:id/registrations", requirePermission('registration:view_all'), async (req, res) => {
     try {
       const tournamentId = parseInt(req.params.id);
       if (isNaN(tournamentId)) {
@@ -1093,7 +1093,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Approve registration
-  app.put("/api/registrations/:id/approve", requirePermission('tournament:manage'), async (req, res) => {
+  app.put("/api/registrations/:id/approve", requirePermission('registration:approve'), async (req, res) => {
     try {
       const registrationId = parseInt(req.params.id);
       if (isNaN(registrationId)) {
@@ -1113,7 +1113,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Get registration statistics
-  app.get("/api/tournaments/:id/registration-stats", requirePermission('tournament:view'), async (req, res) => {
+  app.get("/api/tournaments/:id/registration-stats", requirePermission('registration:view_all'), async (req, res) => {
     try {
       const tournamentId = parseInt(req.params.id);
       if (isNaN(tournamentId)) {
@@ -1142,7 +1142,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   // ==================== ROUND MANAGEMENT ROUTES ====================
 
   // Create tournament round
-  app.post("/api/tournaments/:id/rounds", requirePermission('tournament:manage'), async (req, res) => {
+  app.post("/api/tournaments/:id/rounds", requirePermission('round:create'), async (req, res) => {
     try {
       const tournamentId = parseInt(req.params.id);
       if (isNaN(tournamentId)) {
@@ -1169,7 +1169,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Generate pairings for round
-  app.post("/api/rounds/:id/pairings", requirePermission('tournament:manage'), async (req, res) => {
+  app.post("/api/rounds/:id/pairings", requirePermission('round:modify'), async (req, res) => {
     try {
       const roundId = parseInt(req.params.id);
       if (isNaN(roundId)) {
@@ -1189,7 +1189,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Start round
-  app.put("/api/rounds/:id/start", requirePermission('tournament:manage'), async (req, res) => {
+  app.put("/api/rounds/:id/start", requirePermission('round:start'), async (req, res) => {
     try {
       const roundId = parseInt(req.params.id);
       if (isNaN(roundId)) {
@@ -1209,7 +1209,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Submit game result
-  app.put("/api/games/:id/result", requirePermission('tournament:participate'), async (req, res) => {
+  app.put("/api/games/:id/result", requirePermission('round:result_entry'), async (req, res) => {
     try {
       const gameId = parseInt(req.params.id);
       if (isNaN(gameId)) {
@@ -1236,7 +1236,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Get tournament rounds
-  app.get("/api/tournaments/:id/rounds", requirePermission('tournament:view'), async (req, res) => {
+  app.get("/api/tournaments/:id/rounds", requireAuth, async (req, res) => {
     try {
       const tournamentId = parseInt(req.params.id);
       if (isNaN(tournamentId)) {
@@ -1252,7 +1252,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Get round details
-  app.get("/api/rounds/:id", requirePermission('tournament:view'), async (req, res) => {
+  app.get("/api/rounds/:id", requireAuth, async (req, res) => {
     try {
       const roundId = parseInt(req.params.id);
       if (isNaN(roundId)) {
@@ -1272,7 +1272,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Get tournament standings
-  app.get("/api/tournaments/:id/standings", requirePermission('tournament:view'), async (req, res) => {
+  app.get("/api/tournaments/:id/standings", requireAuth, async (req, res) => {
     try {
       const tournamentId = parseInt(req.params.id);
       if (isNaN(tournamentId)) {
