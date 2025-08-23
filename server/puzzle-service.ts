@@ -96,15 +96,106 @@ export class PuzzleService {
   async getAssessmentPuzzles(estimatedElo: number = 1200): Promise<Puzzle[]> {
     await this.initializeAssessmentPuzzles();
     
-    // Select puzzles around the estimated ELO range
-    const minRating = Math.max(800, estimatedElo - 200);
-    const maxRating = Math.min(2000, estimatedElo + 200);
-    
-    // Note: This is a simplified version - in production you'd want proper range queries
     const allPuzzles = await storage.getAllPuzzles();
-    return allPuzzles.filter(puzzle => 
-      puzzle.rating >= minRating && puzzle.rating <= maxRating
-    ).slice(0, 5); // Return 5 puzzles for assessment
+    
+    // Filter out the most basic puzzles (below 1000) unless user is truly beginner
+    const filteredPuzzles = allPuzzles.filter(puzzle => {
+      return puzzle.rating >= (estimatedElo < 900 ? 800 : 1000);
+    });
+    
+    // Create a progressive selection of puzzles
+    const progressivePuzzles: Puzzle[] = [];
+    
+    // Start with easier puzzle (user's ELO - 100)
+    const easyPuzzles = filteredPuzzles.filter(p => 
+      p.rating >= Math.max(1000, estimatedElo - 100) && 
+      p.rating <= estimatedElo
+    );
+    if (easyPuzzles.length > 0) {
+      progressivePuzzles.push(easyPuzzles[0]);
+    }
+    
+    // Add puzzles at user's level
+    const levelPuzzles = filteredPuzzles.filter(p => 
+      p.rating > estimatedElo && 
+      p.rating <= estimatedElo + 100
+    );
+    if (levelPuzzles.length > 0) {
+      progressivePuzzles.push(...levelPuzzles.slice(0, 2));
+    }
+    
+    // Add slightly harder puzzles (user's ELO + 150)
+    const harderPuzzles = filteredPuzzles.filter(p => 
+      p.rating > estimatedElo + 100 && 
+      p.rating <= estimatedElo + 200
+    );
+    if (harderPuzzles.length > 0) {
+      progressivePuzzles.push(...harderPuzzles.slice(0, 2));
+    }
+    
+    // Add challenging puzzle (user's ELO + 250)
+    const challengingPuzzles = filteredPuzzles.filter(p => 
+      p.rating > estimatedElo + 200 && 
+      p.rating <= estimatedElo + 300
+    );
+    if (challengingPuzzles.length > 0) {
+      progressivePuzzles.push(challengingPuzzles[0]);
+    }
+    
+    // If we don't have enough puzzles, fill with remaining puzzles in range
+    if (progressivePuzzles.length < 6) {
+      const remainingPuzzles = filteredPuzzles.filter(p => 
+        !progressivePuzzles.find(existing => existing.id === p.id) &&
+        p.rating >= Math.max(1000, estimatedElo - 200) &&
+        p.rating <= estimatedElo + 300
+      );
+      progressivePuzzles.push(...remainingPuzzles.slice(0, 6 - progressivePuzzles.length));
+    }
+    
+    // Shuffle to avoid predictable ordering, but maintain difficulty progression
+    const shuffledSelection = this.shuffleWithProgression(progressivePuzzles);
+    
+    return shuffledSelection.slice(0, 6); // Return 6 puzzles for better assessment
+  }
+  
+  // Shuffle puzzles while maintaining some difficulty progression
+  private shuffleWithProgression(puzzles: Puzzle[]): Puzzle[] {
+    if (puzzles.length <= 2) return puzzles;
+    
+    // Sort by rating first
+    const sorted = [...puzzles].sort((a, b) => a.rating - b.rating);
+    
+    // Group into easy, medium, hard
+    const third = Math.floor(sorted.length / 3);
+    const easy = sorted.slice(0, third);
+    const medium = sorted.slice(third, third * 2);
+    const hard = sorted.slice(third * 2);
+    
+    // Shuffle within groups
+    const shuffleArray = (array: Puzzle[]) => {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    };
+    
+    // Combine with some progression: easy -> medium -> hard mixed
+    const result: Puzzle[] = [];
+    const shuffledEasy = shuffleArray(easy);
+    const shuffledMedium = shuffleArray(medium);
+    const shuffledHard = shuffleArray(hard);
+    
+    // Interleave for good progression
+    const maxLength = Math.max(shuffledEasy.length, shuffledMedium.length, shuffledHard.length);
+    for (let i = 0; i < maxLength; i++) {
+      if (i < shuffledEasy.length) result.push(shuffledEasy[i]);
+      if (i < shuffledMedium.length) result.push(shuffledMedium[i]);
+      if (i < shuffledHard.length) result.push(shuffledHard[i]);
+    }
+    
+    return result;
   }
 
   // Calculate ELO rating based on puzzle performance

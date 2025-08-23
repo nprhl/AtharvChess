@@ -111,7 +111,11 @@ export default function OnboardingPage() {
     // For simple puzzles, we only check the first move
     const expectedMove = solution[0];
     console.log('Expected move:', expectedMove);
-    const solved = expectedMove.from === from && expectedMove.to === to;
+    
+    // Handle both database formats: {"to": "e4", "from": "e1"} and {from: "e1", to: "e4"}
+    const expectedFrom = expectedMove.from;
+    const expectedTo = expectedMove.to;
+    const solved = expectedFrom === from && expectedTo === to;
     console.log('Is move correct?', solved);
 
     // Make the move on the board
@@ -154,7 +158,7 @@ export default function OnboardingPage() {
     } else {
       toast({
         title: 'Not quite right',
-        description: `Hint: Try moving from ${expectedMove.from} to ${expectedMove.to}`,
+        description: `Hint: Try moving from ${expectedFrom} to ${expectedTo}`,
         variant: 'destructive',
       });
     }
@@ -189,9 +193,14 @@ export default function OnboardingPage() {
     try {
       // Reset to original position first
       const newGame = new Chess(currentPuzzle.fen);
+      
+      // Handle both database formats: {"to": "e4", "from": "e1"} and {from: "e1", to: "e4"}
+      const moveFrom = firstMove.from;
+      const moveTo = firstMove.to;
+      
       const move = newGame.move({ 
-        from: firstMove.from, 
-        to: firstMove.to 
+        from: moveFrom, 
+        to: moveTo 
       });
       console.log('Move result:', move);
       
@@ -199,24 +208,38 @@ export default function OnboardingPage() {
         setGame(newGame);
         toast({
           title: 'Solution Shown',
-          description: `The correct move is ${firstMove.from} to ${firstMove.to}`,
+          description: `The correct move is ${moveFrom} to ${moveTo}`,
         });
       } else {
         console.error('Invalid move in solution:', firstMove);
-        // Try with different move format
-        const altMove = newGame.move(firstMove.from + firstMove.to);
+        // Try with algebraic notation
+        const altMove = newGame.move(moveFrom + moveTo);
         if (altMove) {
           setGame(newGame);
           toast({
             title: 'Solution Shown',
-            description: `The correct move is ${firstMove.from} to ${firstMove.to}`,
+            description: `The correct move is ${moveFrom} to ${moveTo}`,
           });
         } else {
-          toast({
-            title: 'Error', 
-            description: 'Unable to show solution - invalid move',
-            variant: 'destructive',
+          // Try promoting pawn moves
+          const promotionMove = newGame.move({ 
+            from: moveFrom, 
+            to: moveTo,
+            promotion: 'q'  // Default to queen promotion
           });
+          if (promotionMove) {
+            setGame(newGame);
+            toast({
+              title: 'Solution Shown',
+              description: `The correct move is ${moveFrom} to ${moveTo} (promotes to Queen)`,
+            });
+          } else {
+            toast({
+              title: 'Error', 
+              description: 'Unable to show solution - invalid move',
+              variant: 'destructive',
+            });
+          }
         }
       }
     } catch (error) {
