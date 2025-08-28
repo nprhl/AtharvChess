@@ -37,6 +37,11 @@ interface Tournament {
   venue: string;
   maxParticipants: number;
   organizerId: number;
+  timeControl?: {
+    type: string;
+    minutes: number;
+    increment: number;
+  };
 }
 
 export default function TournamentDetail() {

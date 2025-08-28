@@ -16,7 +16,11 @@ interface Tournament {
   maxParticipants?: number;
   status: 'draft' | 'registration_open' | 'registration_closed' | 'in_progress' | 'completed' | 'cancelled';
   format: 'swiss' | 'round_robin' | 'single_elimination' | 'double_elimination';
-  timeControl: string;
+  timeControl?: {
+    type: string;
+    minutes: number;
+    increment: number;
+  };
   venue?: string;
   organizerId: number;
 }
@@ -162,7 +166,10 @@ export default function TournamentsPage() {
                         {tournament.format.replace('_', ' ')}
                       </Badge>
                       <Badge variant="outline" className="text-xs">
-                        {tournament.timeControl}
+                        {tournament.timeControl ? 
+                          `${tournament.timeControl.minutes}+${tournament.timeControl.increment}` : 
+                          'Time control TBD'
+                        }
                       </Badge>
                     </div>
                   </div>
