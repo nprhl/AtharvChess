@@ -161,7 +161,7 @@ export default function TournamentDetail() {
               </div>
               <div className="flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
-                {tournament.venue}
+                {tournament.venue || 'TBD'}
               </div>
               <div className="flex items-center gap-1">
                 <Trophy className="w-4 h-4" />
@@ -169,14 +169,14 @@ export default function TournamentDetail() {
               </div>
               <div className="flex items-center gap-1">
                 <Users className="w-4 h-4" />
-                {regStats?.confirmed || 0} / {tournament.maxParticipants} players
+                {regStats?.confirmed || 0} / {tournament.maxParticipants || 'Unlimited'} players
               </div>
             </div>
           </div>
           
           <div className="flex flex-col items-end gap-2">
             <Badge className={`${getStatusColor(tournament.status)} text-white`}>
-              {tournament.status.replace('_', ' ').toUpperCase()}
+              {tournament.status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
             </Badge>
             {canRegister && (
               <Button 
