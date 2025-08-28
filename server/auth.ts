@@ -75,6 +75,12 @@ export function configurePassport() {
   // Unified deserialization for both auth systems
   passport.deserializeUser(async (serializedUser: any, done) => {
     try {
+      // Handle legacy session data that might not have the expected structure
+      if (!serializedUser || typeof serializedUser !== 'object') {
+        console.warn('Invalid session data format, clearing session');
+        return done(null, false);
+      }
+
       if (serializedUser.type === 'replit') {
         // Replit Auth user - return the stored user object
         done(null, serializedUser.data);
@@ -83,10 +89,19 @@ export function configurePassport() {
         const user = await storage.getUser(serializedUser.data);
         done(null, user);
       } else {
-        done(new Error('Invalid user session type'));
+        // Handle legacy session data - assume it's a user ID from old format
+        console.warn('Legacy session data detected, attempting to migrate');
+        if (typeof serializedUser === 'number' || (typeof serializedUser === 'string' && !isNaN(Number(serializedUser)))) {
+          const user = await storage.getUser(Number(serializedUser));
+          done(null, user);
+        } else {
+          console.warn('Unable to deserialize session, clearing');
+          done(null, false);
+        }
       }
     } catch (error) {
-      done(error);
+      console.error('Session deserialization error:', error);
+      done(null, false); // Clear invalid session instead of throwing error
     }
   });
 }
