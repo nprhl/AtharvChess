@@ -1,0 +1,44 @@
+Title: Add client-side chess analysis (Stockfish WASM + Maia ONNX) with live charts
+Description:
+
+Local engine evaluation
+
+Integrate WebAssembly build of Stockfish and ONNX runtime version of Maia directly in the browser.
+
+On every move or whenever currentNode changes, run both engines locally and merge their output into a shared analysis object.
+
+Store engine output (e.g., score, best moves, Maia policy probabilities) on the node for later use.
+
+Blunder meter
+
+Implement a calculateBlunderMeter helper that derives blunder/ok/good probabilities from the latest Maia and Stockfish evaluations.
+
+Render a small chart or progress bar that updates in real time based on those probabilities.
+
+Move map + analysis charts
+
+Create a useMoveRecommendations hook that transforms the current node’s evaluation into move-map data (scatter plot), move-by-rating breakdowns, and any other analysis charts.
+
+Ensure charts re-render automatically whenever the node’s evaluation updates.
+
+Component + context integration
+
+Expose analysis, moveRecommendations, and blunderMeter via a React context or custom hook (e.g., useAnalysisController).
+
+Components such as BlunderMeter, MoveMap, or AnalysisPanel subscribe to that context and refresh whenever the underlying state changes.
+
+Implementation details
+
+Use stockfish.wasm and maia.onnx (or similar files) stored locally.
+
+Load engines lazily to keep initial bundle size small.
+
+For performance, throttle or debounce evaluation runs so the UI remains responsive.
+
+If puzzles or training mode exist, enable a “Calculate” button or auto-analysis toggle.
+
+Testing hooks
+
+Provide a simple page (e.g., /analysis-test) where a PGN or FEN can be loaded, and verify that Stockfish/Maia evaluations and all charts update after each move.
+
+End result: All evaluations and chart updates happen entirely in the browser, with no backend API calls after the opening book phase. This allows AtharvChess to run analysis even offline, leveraging Stockfish WASM + Maia ONNX locally.
