@@ -53,32 +53,32 @@ export default function TournamentDetail() {
   const { data: tournament, isLoading } = useQuery({
     queryKey: ['/api/tournaments', tournamentId],
     enabled: !!tournamentId,
-  });
+  }) as { data: Tournament | undefined; isLoading: boolean };
 
   // Fetch registration stats
   const { data: regStats } = useQuery({
     queryKey: ['/api/tournaments', tournamentId, 'registration-stats'],
     enabled: !!tournamentId,
-  });
+  }) as { data: { confirmed: number; pending: number; waitlisted: number } | undefined };
 
   // Fetch rounds
   const { data: rounds } = useQuery({
     queryKey: ['/api/tournaments', tournamentId, 'rounds'],
     enabled: !!tournamentId,
-  });
+  }) as { data: any[] | undefined };
 
   // Fetch standings
   const { data: standings } = useQuery({
     queryKey: ['/api/tournaments', tournamentId, 'standings'],
     enabled: !!tournamentId,
-  });
+  }) as { data: any[] | undefined };
 
   // Register for tournament mutation
   const registerMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/tournaments/${tournamentId}/register`, {
-      method: 'POST',
-      body: { sectionId: 1 } // Default section
-    }),
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/tournaments/${tournamentId}/register`, { sectionId: 1 });
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tournaments', tournamentId, 'registration-stats'] });
     },

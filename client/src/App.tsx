@@ -56,7 +56,7 @@ function Router() {
 
   // Main app routes (authenticated + onboarded users)
   return (
-    <div className="flex flex-col min-h-screen max-w-md mx-auto bg-background shadow-2xl">
+    <div className="flex flex-col min-h-screen md:max-w-none max-w-md mx-auto bg-background md:shadow-none shadow-2xl">
       <HeaderNavigation />
       <main className="flex-1 overflow-y-auto pb-20">
         <Switch>
