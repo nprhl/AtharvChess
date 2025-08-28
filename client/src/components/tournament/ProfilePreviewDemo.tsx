@@ -80,6 +80,13 @@ export function ProfilePreviewDemo() {
             <li>• <strong>Recent Games:</strong> Latest game results with ELO changes</li>
             <li>• <strong>Statistics:</strong> Performance metrics and learning progress</li>
           </ul>
+          <div className="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400">
+            <p className="text-sm text-yellow-800">
+              <strong>Note:</strong> Profile previews are only available on desktop screens (768px+). 
+              On mobile devices, participant names remain clickable but won't open detailed profiles 
+              to preserve screen space during gameplay.
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
