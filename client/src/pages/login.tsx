@@ -40,7 +40,7 @@ export default function LoginPage() {
       return await response.json();
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['/api/auth/me'], data);
+      queryClient.setQueryData(['/api/auth/user'], data.user);
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',

@@ -41,7 +41,7 @@ export default function RegisterPage() {
       return await response.json();
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['/api/auth/me'], data);
+      queryClient.setQueryData(['/api/auth/user'], data.user);
       toast({
         title: 'Welcome to Chess Learning!',
         description: 'Your account has been created successfully.',
