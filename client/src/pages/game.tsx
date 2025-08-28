@@ -132,15 +132,6 @@ export default function GamePage() {
           </div>
         </div>
 
-        {/* Blunder Meter - Mobile and Desktop */}
-        <BlunderMeter 
-          engineAnalysis={engineAnalysis}
-          gameMode={gameMode}
-          playerColor={playerColor}
-          currentTurn={turn}
-          className="flex-shrink-0"
-        />
-
         {/* Interactive Chessboard */}
         <div className="flex-1 flex items-center justify-center px-2">
           <ChessBoard 
@@ -223,10 +214,29 @@ export default function GamePage() {
 
       {/* Engine Analysis Panel - Desktop Only */}
       {isDesktop && !settings.focusMode && (
-        <div className="w-80 flex-shrink-0">
+        <div className="w-80 flex-shrink-0 space-y-4">
           <EngineAnalysisPanel 
             analysis={engineAnalysis}
             className="sticky top-4"
+          />
+          <BlunderMeter 
+            engineAnalysis={engineAnalysis}
+            gameMode={gameMode}
+            playerColor={playerColor}
+            currentTurn={turn}
+            className="sticky top-4"
+          />
+        </div>
+      )}
+
+      {/* Blunder Meter - Mobile Only */}
+      {!isDesktop && (
+        <div className="p-3">
+          <BlunderMeter 
+            engineAnalysis={engineAnalysis}
+            gameMode={gameMode}
+            playerColor={playerColor}
+            currentTurn={turn}
           />
         </div>
       )}
