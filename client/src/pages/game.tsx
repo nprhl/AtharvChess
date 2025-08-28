@@ -1,52 +1,63 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState } from "react";
+import ChessBoard from "@/components/chess-board";
+import AIHintCard from "@/components/ai-hint-card";
+import PromotionDialog from "@/components/promotion-dialog";
+import { useChessGame } from "@/hooks/use-chess-game";
+import { useEffect, useCallback } from "react";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, HelpCircle, RotateCcw, Settings } from "lucide-react";
+import { useEngineAnalysis } from "@/hooks/useEngineAnalysis";
+import { EngineAnalysisPanel } from "@/components/chess/EngineAnalysisPanel";
+import { BlunderMeter } from "../components/chess/BlunderMeter";
 import { Link } from 'wouter';
-import { ChessBoard } from '../components/chess/ChessBoard';
-import { PromotionDialog } from '../components/chess/PromotionDialog';
-import { AIHintCard } from '../components/chess/AIHintCard';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { ChevronLeft, RotateCcw, HelpCircle, Settings } from 'lucide-react';
-import { useChessGame } from '../hooks/useChessGame';
-import { EngineAnalysisPanel } from '../components/chess/EngineAnalysisPanel';
-import { useEngineAnalysis } from '../hooks/useEngineAnalysis';
 
 export default function GamePage() {
+  const [settings, setSettings] = useLocalStorage('chess-settings', {
+    hintsEnabled: true,
+    moveAnnouncementsEnabled: false,
+    focusMode: false,
+    progressTracking: true,
+    dailyPlayTime: 30,
+    breakReminders: 15,
+    difficulty: 'beginner',
+    autoAdjustDifficulty: true,
+    gameMode: 'pvc' as 'pvp' | 'pvc',
+    aiDifficulty: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
+    playerColor: 'w' as 'w' | 'b'
+  });
+
+  const { 
+    game, 
+    makeMove, 
+    undoMove, 
+    getValidMoves, 
+    isGameOver, 
+    isCheckmate,
+    isDraw,
+    resetGame,
+    turn,
+    moveHistory,
+    isComputerThinking,
+    gameMode,
+    playerColor,
+    lastMove,
+    promotionPending,
+    handlePromotion,
+    cancelPromotion
+  } = useChessGame({ 
+    gameMode: settings.gameMode,
+    difficulty: settings.aiDifficulty,
+    playerColor: settings.playerColor
+  });
+
   const [showHint, setShowHint] = useState(false);
   const [currentHint, setCurrentHint] = useState<any>(null);
   const [learningTips, setLearningTips] = useState<string[]>([]);
   const [suggestedMove, setSuggestedMove] = useState<string | null>(null);
-  const [settings, setSettings] = useState({
-    gameMode: 'pvc' as 'pvp' | 'pvc',
-    aiDifficulty: 'intermediate' as 'beginner' | 'intermediate' | 'advanced',
-    playerColor: 'w' as 'w' | 'b',
-    moveAnnouncementsEnabled: false,
-    hintsEnabled: true,
-    focusMode: false
-  });
-
-  const {
-    game,
-    turn,
-    moveHistory,
-    lastMove,
-    isComputerThinking,
-    promotionPending,
-    makeMove,
-    getValidMoves,
-    resetGame,
-    isCheckmate,
-    isDraw,
-    isGameOver,
-    handlePromotion,
-    gameMode,
-    playerColor
-  } = useChessGame({
-    gameMode: settings.gameMode,
-    aiDifficulty: settings.aiDifficulty,
-    playerColor: settings.playerColor,
-  });
-
-  const { analysis: engineAnalysis } = useEngineAnalysis(game.fen());
+  
+  // Engine analysis for blunder detection and real-time analysis
+  const { result: engineAnalysis } = useEngineAnalysis(game);
 
   const handleGetHint = useCallback(async () => {
     try {
@@ -120,6 +131,15 @@ export default function GamePage() {
             Move {Math.ceil(moveHistory.length / 2)}
           </div>
         </div>
+
+        {/* Blunder Meter - Mobile and Desktop */}
+        <BlunderMeter 
+          engineAnalysis={engineAnalysis}
+          gameMode={gameMode}
+          playerColor={playerColor}
+          currentTurn={turn}
+          className="flex-shrink-0"
+        />
 
         {/* Interactive Chessboard */}
         <div className="flex-1 flex items-center justify-center px-2">
