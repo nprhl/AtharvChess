@@ -4,10 +4,13 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey(),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
+  id: serial("id").primaryKey(),
+  replitUserId: text("replit_user_id").unique(), // External Replit OIDC user ID
+  username: text("username"),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   eloRating: integer("elo_rating").notNull().default(1200),
   isEloCalibrated: boolean("is_elo_calibrated").notNull().default(false),
@@ -181,7 +184,27 @@ export const userTipProgress = pgTable("user_tip_progress", {
   completedAt: timestamp("completed_at"),
 });
 
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
 export type UpsertUser = typeof users.$inferInsert;
+
+export type Game = typeof games.$inferSelect;
+export type InsertGame = typeof games.$inferInsert;
+
+export type Lesson = typeof lessons.$inferSelect;
+export type InsertLesson = typeof lessons.$inferInsert;
+
+export type UserLessonProgress = typeof userLessonProgress.$inferSelect;
+export type InsertUserLessonProgress = typeof userLessonProgress.$inferInsert;
+
+export type Settings = typeof settings.$inferSelect;
+export type InsertSettings = typeof settings.$inferInsert;
+
+export type Puzzle = typeof puzzles.$inferSelect;
+export type InsertPuzzle = typeof puzzles.$inferInsert;
+
+export type PuzzleAttempt = typeof puzzleAttempts.$inferSelect;
+export type InsertPuzzleAttempt = typeof puzzleAttempts.$inferInsert;
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,

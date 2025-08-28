@@ -14,11 +14,11 @@ import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Users
-  getUser(id: string): Promise<User | undefined>;
+  getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
+  updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
 
   // Games
@@ -381,7 +381,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getUser(id: string): Promise<User | undefined> {
+  async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
@@ -404,7 +404,7 @@ export class DatabaseStorage implements IStorage {
 
     // Create default settings for new user
     await db.insert(settings).values({
-      userId: parseInt(user.id), // Convert string ID to number for settings
+      userId: user.id,
       hintsEnabled: true,
       focusMode: false,
       progressTracking: true,
@@ -417,7 +417,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+  async updateUser(id: number, updates: Partial<User>): Promise<User | undefined> {
     const [user] = await db
       .update(users)
       .set(updates)
@@ -431,7 +431,7 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.id,
+        target: users.replitUserId,
         set: userData,
       })
       .returning();
