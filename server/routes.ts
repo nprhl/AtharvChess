@@ -16,8 +16,8 @@ import { MoveEvaluator } from "./move-evaluator";
 import { evals as evalRoutes } from "./routes/evals";
 import { registerGameMoveRoutes } from "./routes/game-move";
 import { db } from "./db";
-import { games, users } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { games, users, tournaments, registrations } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
 import { requirePermission, requireRole, PERMISSIONS, attachUserPermissions, getUserPermissions, assignRole, revokeRole } from "./rbac";
 import { registrationService } from "./tournament-registration";
@@ -1136,6 +1136,108 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     } catch (error) {
       console.error("Error fetching user registrations:", error);
       res.status(500).json({ error: "Failed to fetch user registrations" });
+    }
+  });
+
+  // ==================== USER PROFILE ROUTES ====================
+  
+  // Get user profile details
+  app.get("/api/users/:id/profile", requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Remove sensitive information
+      const { passwordHash, ...userProfile } = user;
+      res.json(userProfile);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      res.status(500).json({ error: "Failed to fetch user profile" });
+    }
+  });
+
+  // Get user tournament history
+  app.get("/api/users/:id/tournament-history", requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      // Query tournament registrations and calculate performance
+      const history = await db
+        .select({
+          tournamentId: registrations.tournamentId,
+          tournamentName: tournaments.name,
+          tournamentDate: tournaments.startDate,
+          registrationStatus: registrations.status,
+          createdAt: registrations.createdAt,
+        })
+        .from(registrations)
+        .innerJoin(tournaments, eq(tournaments.id, registrations.tournamentId))
+        .where(eq(registrations.userId, userId))
+        .orderBy(desc(tournaments.startDate))
+        .limit(10);
+
+      // For now, return basic history - in a real app, you'd calculate final positions, scores, etc.
+      const formattedHistory = history.map((h, index) => ({
+        tournamentId: h.tournamentId,
+        tournamentName: h.tournamentName,
+        tournamentDate: h.tournamentDate,
+        finalPosition: index + 1, // Mock data - would calculate from actual results
+        totalPlayers: 25 + Math.floor(Math.random() * 50), // Mock data
+        score: 3.5 + Math.random() * 2, // Mock data
+        rounds: 5 + Math.floor(Math.random() * 4), // Mock data
+        performance: 1200 + Math.floor(Math.random() * 400), // Mock data
+        result: index === 0 ? "1st place" : index < 3 ? "Top 3" : index < 10 ? "Top 10" : "Participant",
+      }));
+
+      res.json(formattedHistory);
+    } catch (error) {
+      console.error("Error fetching tournament history:", error);
+      res.status(500).json({ error: "Failed to fetch tournament history" });
+    }
+  });
+
+  // Get user recent games
+  app.get("/api/users/:id/recent-games", requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      // Query recent games
+      const recentGames = await db
+        .select()
+        .from(games)
+        .where(eq(games.userId, userId))
+        .orderBy(desc(games.createdAt))
+        .limit(10);
+
+      // Format games data
+      const formattedGames = recentGames.map((game) => ({
+        id: game.id,
+        date: game.createdAt,
+        opponent: game.opponent || "Unknown",
+        result: game.result,
+        eloChange: game.eloChange,
+        moves: Array.isArray(game.moves) ? (game.moves as any[]).length : 0,
+        duration: "15 min", // Mock duration - would store actual duration
+        opening: "Sicilian Defense", // Mock opening - would analyze from moves
+      }));
+
+      res.json(formattedGames);
+    } catch (error) {
+      console.error("Error fetching recent games:", error);
+      res.status(500).json({ error: "Failed to fetch recent games" });
     }
   });
 

@@ -1,6 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Trophy, Medal, Award, TrendingUp } from "lucide-react";
+import { ParticipantProfilePreview } from "./ParticipantProfilePreview";
 
 interface Standing {
   userId: number;
@@ -107,12 +109,23 @@ export function StandingsTable({ standings, showPosition = false, showStats = fa
                   
                   <td className="p-3">
                     <div>
-                      <div className="font-semibold">{standing.username}</div>
-                      {!showStats && (
-                        <div className="text-sm text-gray-600">
-                          Rating: {standing.eloRating}
-                        </div>
-                      )}
+                      <ParticipantProfilePreview 
+                        userId={standing.userId}
+                        username={standing.username}
+                        eloRating={standing.eloRating}
+                        trigger={
+                          <Button variant="ghost" className="h-auto p-0 justify-start">
+                            <div className="text-left">
+                              <div className="font-semibold hover:text-blue-600">{standing.username}</div>
+                              {!showStats && (
+                                <div className="text-sm text-gray-600">
+                                  Rating: {standing.eloRating}
+                                </div>
+                              )}
+                            </div>
+                          </Button>
+                        }
+                      />
                     </div>
                   </td>
                   

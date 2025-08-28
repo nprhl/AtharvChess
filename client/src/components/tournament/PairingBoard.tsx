@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ParticipantProfilePreview } from "./ParticipantProfilePreview";
 
 interface Round {
   id: number;
@@ -368,8 +369,26 @@ function PairingCard({ pairing, canManage }: { pairing: any; canManage: boolean 
             
             <div className="flex items-center gap-3 flex-1">
               <div className="text-right min-w-32">
-                <div className="font-semibold">{pairing.whitePlayerName || 'TBD'}</div>
-                <div className="text-xs text-gray-600">({pairing.whitePlayerElo})</div>
+                {pairing.whitePlayerName && pairing.whitePlayerId ? (
+                  <ParticipantProfilePreview 
+                    userId={pairing.whitePlayerId}
+                    username={pairing.whitePlayerName}
+                    eloRating={pairing.whitePlayerElo}
+                    trigger={
+                      <Button variant="ghost" className="h-auto p-0 text-right">
+                        <div>
+                          <div className="font-semibold hover:text-blue-600">{pairing.whitePlayerName}</div>
+                          <div className="text-xs text-gray-600">({pairing.whitePlayerElo})</div>
+                        </div>
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <div>
+                    <div className="font-semibold">TBD</div>
+                    <div className="text-xs text-gray-600">(-)</div>
+                  </div>
+                )}
               </div>
               
               <div className="text-center font-bold text-lg px-4 py-2 bg-white rounded">
@@ -377,8 +396,26 @@ function PairingCard({ pairing, canManage }: { pairing: any; canManage: boolean 
               </div>
               
               <div className="text-left min-w-32">
-                <div className="font-semibold">{pairing.blackPlayerName || 'TBD'}</div>
-                <div className="text-xs text-gray-600">({pairing.blackPlayerElo})</div>
+                {pairing.blackPlayerName && pairing.blackPlayerId ? (
+                  <ParticipantProfilePreview 
+                    userId={pairing.blackPlayerId}
+                    username={pairing.blackPlayerName}
+                    eloRating={pairing.blackPlayerElo}
+                    trigger={
+                      <Button variant="ghost" className="h-auto p-0 text-left">
+                        <div>
+                          <div className="font-semibold hover:text-blue-600">{pairing.blackPlayerName}</div>
+                          <div className="text-xs text-gray-600">({pairing.blackPlayerElo})</div>
+                        </div>
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <div>
+                    <div className="font-semibold">TBD</div>
+                    <div className="text-xs text-gray-600">(-)</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

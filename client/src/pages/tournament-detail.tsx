@@ -22,6 +22,7 @@ import { PairingBoard } from "@/components/tournament/PairingBoard";
 import { StandingsTable } from "@/components/tournament/StandingsTable";
 import { RegistrationsList } from "@/components/tournament/RegistrationsList";
 import { RoundManager } from "@/components/tournament/RoundManager";
+import { ProfilePreviewDemo } from "@/components/tournament/ProfilePreviewDemo";
 import { usePermissions, useHasPermission } from "@/hooks/usePermissions";
 import { useState } from "react";
 
@@ -248,6 +249,7 @@ export default function TournamentDetail() {
           <TabsTrigger value="brackets">Brackets</TabsTrigger>
           <TabsTrigger value="pairings">Pairings</TabsTrigger>
           <TabsTrigger value="standings">Standings</TabsTrigger>
+          <TabsTrigger value="profiles">Profiles</TabsTrigger>
           {canManage && <TabsTrigger value="registrations">Registrations</TabsTrigger>}
           {canManage && <TabsTrigger value="rounds">Rounds</TabsTrigger>}
         </TabsList>
@@ -317,6 +319,10 @@ export default function TournamentDetail() {
             showPosition 
             showStats
           />
+        </TabsContent>
+
+        <TabsContent value="profiles">
+          <ProfilePreviewDemo />
         </TabsContent>
 
         {canManage && (

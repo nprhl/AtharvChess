@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ParticipantProfilePreview } from "./ParticipantProfilePreview";
 
 interface Registration {
   id: number;
@@ -277,7 +278,16 @@ function RegistrationCard({
           
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h4 className="font-semibold text-lg">{registration.userName}</h4>
+              <ParticipantProfilePreview 
+                userId={registration.userId}
+                username={registration.userName}
+                eloRating={registration.userElo}
+                trigger={
+                  <Button variant="ghost" className="h-auto p-0 justify-start">
+                    <h4 className="font-semibold text-lg hover:text-blue-600">{registration.userName}</h4>
+                  </Button>
+                }
+              />
               {getStatusBadge(registration.status)}
             </div>
             <div className="flex items-center gap-4 text-sm text-gray-600">
