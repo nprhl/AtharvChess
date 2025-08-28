@@ -23,6 +23,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Undo, HelpCircle, RotateCcw, X } from "lucide-react";
+import { useEngineAnalysis } from "@/hooks/useEngineAnalysis";
+import { EngineAnalysisPanel } from "@/components/chess/EngineAnalysisPanel";
 
 export default function GamePage() {
   const [settings, setSettings] = useLocalStorage('chess-settings', {
@@ -95,6 +97,11 @@ export default function GamePage() {
           analyzeMoveForLearning(lastMove.san, game.fen(), previousFen);
         }
         
+        // Trigger engine analysis for the new position
+        if (!settings.focusMode) {
+          analyze(game);
+        }
+        
         // Store current position as previous for next move
         setPreviousFen(game.fen());
       }
@@ -112,6 +119,9 @@ export default function GamePage() {
   const [moveAnalysis, setMoveAnalysis] = useState<any>(null);
   const [showMoveAnalysis, setShowMoveAnalysis] = useState(false);
   const [previousFen, setPreviousFen] = useState<string | null>(null);
+
+  // Engine Analysis Integration
+  const { analyze, result: engineAnalysis, clearAnalysis } = useEngineAnalysis(!settings.focusMode);
 
   // Analyze moves for educational feedback
   const analyzeMoveForLearning = async (moveSan: string, currentFen: string, prevFen?: string) => {
@@ -205,31 +215,35 @@ export default function GamePage() {
   const isGameInProgress = moveHistory.length > 0 && !isGameOver();
   const gameOverReason = isCheckmate() ? 'Checkmate!' : isDraw() ? 'Draw!' : null;
 
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+  
   return (
-    <section className="p-3 space-y-3 flex flex-col h-full">
-      {/* Game Status Bar */}
-      <div className="bg-card border-border rounded-lg p-3 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${
+    <section className={`${isDesktop ? 'flex flex-row gap-4 p-4 max-w-6xl mx-auto' : 'p-3 flex flex-col'} space-y-3 h-full`}>
+      {/* Main Game Content */}
+      <div className={`${isDesktop ? 'flex-1' : ''} flex flex-col space-y-3`}>
+        {/* Game Status Bar */}
+        <div className="bg-card border-border rounded-lg p-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${
             isComputerThinking ? 'bg-orange-400 animate-pulse' : 
             (gameMode === 'pvc' && turn !== playerColor) ? 'bg-red-400 animate-pulse' : 
             'bg-emerald-400 animate-pulse'
-          }`} />
-          <span className="text-sm font-medium text-card-foreground">
-            {isComputerThinking ? 'Coach is thinking...' :
-             gameMode === 'pvc' ? 
-               (turn === playerColor ? 'Your Turn' : 'Coach\'s Turn') :
-               (turn === 'w' ? 'White\'s Turn' : 'Black\'s Turn')
-            }
-          </span>
+            }`} />
+            <span className="text-sm font-medium text-card-foreground">
+              {isComputerThinking ? 'Coach is thinking...' :
+               gameMode === 'pvc' ? 
+                 (turn === playerColor ? 'Your Turn' : 'Coach\'s Turn') :
+                 (turn === 'w' ? 'White\'s Turn' : 'Black\'s Turn')
+              }
+            </span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Move {Math.ceil(moveHistory.length / 2)}
+          </div>
         </div>
-        <div className="text-xs text-muted-foreground">
-          Move {Math.ceil(moveHistory.length / 2)}
-        </div>
-      </div>
 
-      {/* Interactive Chessboard */}
-      <div className="flex-1 flex items-center justify-center px-2">
+        {/* Interactive Chessboard */}
+        <div className="flex-1 flex items-center justify-center px-2">
         <ChessBoard 
           game={game}
           onMove={makeMove}
@@ -237,10 +251,10 @@ export default function GamePage() {
           lastMove={lastMove}
           disabled={isGameOver() || isComputerThinking || (gameMode === 'pvc' && turn !== playerColor)}
         />
-      </div>
+        </div>
 
-      {/* Bottom Section - Fixed */}
-      <div className="flex-shrink-0 space-y-3">
+        {/* Bottom Section - Fixed */}
+        <div className="flex-shrink-0 space-y-3">
         {/* AI Hint Card */}
         {showHint && currentHint && (
           <AIHintCard 
@@ -399,7 +413,17 @@ export default function GamePage() {
             </p>
           </div>
         )}
-      </div>
+        </div>
+
+      {/* Engine Analysis Panel - Desktop Only */}
+      {isDesktop && !settings.focusMode && (
+        <div className="w-80 flex-shrink-0">
+          <EngineAnalysisPanel 
+            analysis={engineAnalysis}
+            className="sticky top-4"
+          />
+        </div>
+      )}
 
       {/* Stockfish Move Evaluation Display - Temporarily Disabled */}
       {/* <MoveEvaluationDisplay
