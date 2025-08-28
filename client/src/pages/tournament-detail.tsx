@@ -51,25 +51,25 @@ export default function TournamentDetail() {
 
   // Fetch tournament details
   const { data: tournament, isLoading } = useQuery({
-    queryKey: ['/api/tournaments', tournamentId],
+    queryKey: [`/api/tournaments/${tournamentId}`],
     enabled: !!tournamentId,
   }) as { data: Tournament | undefined; isLoading: boolean };
 
   // Fetch registration stats
   const { data: regStats } = useQuery({
-    queryKey: ['/api/tournaments', tournamentId, 'registration-stats'],
+    queryKey: [`/api/tournaments/${tournamentId}/registration-stats`],
     enabled: !!tournamentId,
   }) as { data: { confirmed: number; pending: number; waitlisted: number } | undefined };
 
   // Fetch rounds
   const { data: rounds } = useQuery({
-    queryKey: ['/api/tournaments', tournamentId, 'rounds'],
+    queryKey: [`/api/tournaments/${tournamentId}/rounds`],
     enabled: !!tournamentId,
   }) as { data: any[] | undefined };
 
   // Fetch standings
   const { data: standings } = useQuery({
-    queryKey: ['/api/tournaments', tournamentId, 'standings'],
+    queryKey: [`/api/tournaments/${tournamentId}/standings`],
     enabled: !!tournamentId,
   }) as { data: any[] | undefined };
 
@@ -80,7 +80,7 @@ export default function TournamentDetail() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tournaments', tournamentId, 'registration-stats'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tournaments/${tournamentId}/registration-stats`] });
     },
   });
 
