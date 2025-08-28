@@ -57,7 +57,12 @@ export default function GamePage() {
   const [suggestedMove, setSuggestedMove] = useState<string | null>(null);
   
   // Engine analysis for blunder detection and real-time analysis
-  const { result: engineAnalysis } = useEngineAnalysis(game);
+  const { result: engineAnalysis, analyze } = useEngineAnalysis(true);
+  
+  // Trigger analysis when game state changes
+  useEffect(() => {
+    analyze(game);
+  }, [game.fen(), analyze]);
 
   const handleGetHint = useCallback(async () => {
     try {
@@ -175,6 +180,18 @@ export default function GamePage() {
               </Button>
             </Link>
 
+            {isGameInProgress && moveHistory.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1"
+                onClick={() => undoMove()}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Undo
+              </Button>
+            )}
+
             {isGameInProgress && (
               <Button 
                 variant="outline" 
@@ -189,7 +206,9 @@ export default function GamePage() {
 
             {settings.hintsEnabled && !isGameOver() && (
               <Button 
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                variant="outline"
+                size="sm"
+                className="flex-1"
                 onClick={handleGetHint}
               >
                 <HelpCircle className="w-4 h-4" />
