@@ -19,7 +19,8 @@ const tournamentSchema = z.object({
   description: z.string().optional(),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
-  registrationDeadline: z.string().min(1, "Registration deadline is required"),
+  registrationStartDate: z.string().min(1, "Registration start date is required"),
+  registrationEndDate: z.string().min(1, "Registration end date is required"),
   maxParticipants: z.string().optional(),
   format: z.enum(['swiss', 'round_robin', 'single_elimination', 'double_elimination']),
   timeControl: z.string().min(1, "Time control is required"),
@@ -46,11 +47,21 @@ export default function TournamentCreatePage() {
     mutationFn: async (data: TournamentForm) => {
       const payload = {
         ...data,
+        startDate: new Date(data.startDate).toISOString(),
+        endDate: new Date(data.endDate).toISOString(),
+        registrationStartDate: new Date(data.registrationStartDate).toISOString(),
+        registrationEndDate: new Date(data.registrationEndDate).toISOString(),
         maxParticipants: data.maxParticipants ? parseInt(data.maxParticipants) : null,
-        entryFee: data.entryFee ? parseFloat(data.entryFee) : null,
+        entryFee: data.entryFee || '0',
+        currency: 'INR',
         rounds: data.rounds ? parseInt(data.rounds) : null,
         status: 'draft',
         organizerId: 6, // Current user - should be dynamic in real app
+        timeControl: {
+          type: 'rapid',
+          minutes: parseInt(data.timeControl.split('+')[0]) || 15,
+          increment: parseInt(data.timeControl.split('+')[1]) || 10
+        }
       };
       
       const response = await fetch("/api/tournaments", {
@@ -179,16 +190,30 @@ export default function TournamentCreatePage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="registrationDeadline">Registration Deadline *</Label>
-              <Input
-                id="registrationDeadline"
-                type="date"
-                {...form.register("registrationDeadline")}
-              />
-              {form.formState.errors.registrationDeadline && (
-                <p className="text-sm text-red-500">{form.formState.errors.registrationDeadline.message}</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="registrationStartDate">Registration Start *</Label>
+                <Input
+                  id="registrationStartDate"
+                  type="date"
+                  {...form.register("registrationStartDate")}
+                />
+                {form.formState.errors.registrationStartDate && (
+                  <p className="text-sm text-red-500">{form.formState.errors.registrationStartDate.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="registrationEndDate">Registration End *</Label>
+                <Input
+                  id="registrationEndDate"
+                  type="date"
+                  {...form.register("registrationEndDate")}
+                />
+                {form.formState.errors.registrationEndDate && (
+                  <p className="text-sm text-red-500">{form.formState.errors.registrationEndDate.message}</p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -252,14 +277,18 @@ export default function TournamentCreatePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="entryFee">Entry Fee ($)</Label>
-                <Input
-                  id="entryFee"
-                  type="number"
-                  step="0.01"
-                  {...form.register("entryFee")}
-                  placeholder="10.00"
-                />
+                <Label htmlFor="entryFee">Entry Fee (₹)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-sm text-gray-500">₹</span>
+                  <Input
+                    id="entryFee"
+                    type="number"
+                    step="0.01"
+                    {...form.register("entryFee")}
+                    placeholder="500.00"
+                    className="pl-8"
+                  />
+                </div>
               </div>
             </div>
           </CardContent>

@@ -293,7 +293,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create tournament (requires TOURNAMENT_CREATE permission)
   app.post("/api/tournaments", requireAuth, requirePermission(PERMISSIONS.TOURNAMENT_CREATE), async (req, res) => {
     try {
-      const tournamentData = insertTournamentSchema.parse(req.body);
+      // Transform date strings to proper Date objects before validation
+      const transformedBody = {
+        ...req.body,
+        startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+        registrationStartDate: req.body.registrationStartDate ? new Date(req.body.registrationStartDate) : undefined,
+        registrationEndDate: req.body.registrationEndDate ? new Date(req.body.registrationEndDate) : undefined,
+      };
+      
+      const tournamentData = insertTournamentSchema.parse(transformedBody);
       const tournament = await storage.createTournament(tournamentData);
       res.status(201).json(tournament);
     } catch (error) {
