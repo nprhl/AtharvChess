@@ -3,7 +3,7 @@ import {
   dailyTips, userTipProgress, organizations, userRoles, teams, teamMembers,
   tournaments, tournamentSections, registrations, rounds, pairings, tournamentGames,
   appeals, ratingSnapshots, certificates, notifications,
-  type User, type UpsertUser, type Game, type InsertGame,
+  type User, type UpsertUser, type InsertUser, type Game, type InsertGame,
   type Lesson, type InsertLesson, type UserLessonProgress, 
   type InsertUserLessonProgress, type Settings, type InsertSettings,
   type Puzzle, type InsertPuzzle, type PuzzleAttempt, type InsertPuzzleAttempt,
@@ -404,7 +404,7 @@ export class DatabaseStorage implements IStorage {
 
     // Create default settings for new user
     await db.insert(settings).values({
-      userId: user.id,
+      userId: parseInt(user.id), // Convert string ID to number for settings
       hintsEnabled: true,
       focusMode: false,
       progressTracking: true,
@@ -432,10 +432,7 @@ export class DatabaseStorage implements IStorage {
       .values(userData)
       .onConflictDoUpdate({
         target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
+        set: userData,
       })
       .returning();
     return user;

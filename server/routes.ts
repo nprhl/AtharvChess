@@ -6,7 +6,8 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { puzzleService } from "./puzzle-service";
 import { tipService } from "./tip-service";
 import { gameIntegration } from "./game-integration";
-import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema, insertOrganizationSchema, insertTournamentSchema } from "@shared/schema";
+import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema, insertOrganizationSchema, insertTournamentSchema, type InsertUser } from "@shared/schema";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { StockfishAI } from "./stockfish-ai";
 import { OpenAIChessAI } from "./openai-chess-ai";
@@ -23,6 +24,11 @@ import { requirePermission, requireRole, PERMISSIONS, attachUserPermissions, get
 import { registrationService } from "./tournament-registration";
 import { pairingAlgorithms } from "./pairing-algorithms";
 import { roundManagement } from "./round-management";
+
+// Hash password helper function
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 10);
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit authentication

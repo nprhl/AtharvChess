@@ -182,7 +182,6 @@ export const userTipProgress = pgTable("user_tip_progress", {
 });
 
 export type UpsertUser = typeof users.$inferInsert;
-export type User = typeof users.$inferSelect;
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
