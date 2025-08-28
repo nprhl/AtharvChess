@@ -2,7 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth as setupReplitAuth, isAuthenticated } from "./replitAuth";
+import { configurePassport } from "./auth";
 import { puzzleService } from "./puzzle-service";
 import { tipService } from "./tip-service";
 import { gameIntegration } from "./game-integration";
@@ -31,18 +32,37 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup Replit authentication
-  await setupAuth(app);
+  // Setup both authentication systems
+  await setupReplitAuth(app);
+  configurePassport();
   
   // Mount API routes
   app.use('/api/evals', evalRoutes);
   registerGameMoveRoutes(app);
 
-  // Auth user endpoint for Replit Auth
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Auth user endpoint - works for both Replit Auth and form-based auth
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      let user;
+      if (req.user.claims) {
+        // Replit Auth user - get user by replitUserId  
+        const userRecord = await db.select().from(users).where(eq(users.replitUserId, req.user.claims.sub));
+        user = userRecord[0];
+      } else if (req.user.id) {
+        // Form-based auth user - get user by id
+        user = await storage.getUser(req.user.id);
+      } else {
+        return res.status(401).json({ message: "Invalid user session" });
+      }
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -141,6 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })(req, res, next);
   });
 
+  // Unified logout route - works for both auth types
   app.post("/api/auth/logout", (req, res) => {
     req.logout((err) => {
       if (err) {

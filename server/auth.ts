@@ -43,6 +43,11 @@ export function configurePassport() {
             return done(null, false, { message: 'Invalid email or password' });
           }
 
+          // Check if user has password hash (form-based user) or is Replit user
+          if (!user.passwordHash) {
+            return done(null, false, { message: 'This account uses Replit login. Please use "Log in with Replit".' });
+          }
+
           const isValidPassword = await bcrypt.compare(password, user.passwordHash);
           if (!isValidPassword) {
             return done(null, false, { message: 'Invalid email or password' });
@@ -56,16 +61,30 @@ export function configurePassport() {
     )
   );
 
-  // Serialize user for session
+  // Unified serialization for both auth systems
   passport.serializeUser((user: any, done) => {
-    done(null, user.id);
+    if (user.claims) {
+      // Replit Auth user - store the full user object
+      done(null, { type: 'replit', data: user });
+    } else {
+      // Form-based user - store only the ID
+      done(null, { type: 'form', data: user.id });
+    }
   });
 
-  // Deserialize user from session
-  passport.deserializeUser(async (id: number, done) => {
+  // Unified deserialization for both auth systems
+  passport.deserializeUser(async (serializedUser: any, done) => {
     try {
-      const user = await storage.getUser(id);
-      done(null, user);
+      if (serializedUser.type === 'replit') {
+        // Replit Auth user - return the stored user object
+        done(null, serializedUser.data);
+      } else if (serializedUser.type === 'form') {
+        // Form-based user - fetch from database
+        const user = await storage.getUser(serializedUser.data);
+        done(null, user);
+      } else {
+        done(new Error('Invalid user session type'));
+      }
     } catch (error) {
       done(error);
     }

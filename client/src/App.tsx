@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Link } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
@@ -33,25 +33,58 @@ function Router() {
     );
   }
 
-  // Public routes (no authentication required) - Show landing page with login button
+  // Public routes (no authentication required) - Show both login options
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="max-w-md w-full space-y-8 p-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-foreground mb-4">Chess Learning App</h1>
-            <p className="text-lg text-muted-foreground mb-8">
-              Master chess with AI-powered lessons, real-time analysis, and comprehensive tournament management.
-            </p>
-            <a 
-              href="/api/login"
-              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-            >
-              Log in with Replit
-            </a>
+      <Switch>
+        <Route path="/login" component={LoginPage} />
+        <Route path="/register" component={RegisterPage} />
+        <Route>
+          <div className="min-h-screen flex items-center justify-center bg-background">
+            <div className="max-w-md w-full space-y-8 p-8">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold text-foreground mb-4">Chess Learning App</h1>
+                <p className="text-lg text-muted-foreground mb-8">
+                  Master chess with AI-powered lessons, real-time analysis, and comprehensive tournament management.
+                </p>
+                
+                <div className="space-y-4">
+                  {/* Replit Auth Option */}
+                  <a 
+                    href="/api/login"
+                    className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full"
+                  >
+                    Log in with Replit
+                  </a>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">Or</span>
+                    </div>
+                  </div>
+                  
+                  {/* Form-based Auth Options */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link href="/login">
+                      <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full">
+                        Login
+                      </button>
+                    </Link>
+                    <Link href="/register">
+                      <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full">
+                        Sign Up
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </Route>
+      </Switch>
     );
   }
 
