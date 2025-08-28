@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, GraduationCap, Clock, TrendingUp, RotateCcw, Palette, Gamepad2 } from "lucide-react";
+import { Shield, GraduationCap, Clock, TrendingUp, RotateCcw, Palette, Gamepad2, LogOut } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/components/theme-provider";
@@ -61,6 +61,10 @@ export default function SettingsPage() {
       title: "Settings reset",
       description: "All settings have been restored to defaults",
     });
+  };
+
+  const handleLogout = () => {
+    window.location.href = '/api/logout';
   };
 
   return (
@@ -297,14 +301,24 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Reset Button */}
-      <Button 
-        className="w-full bg-red-600 hover:bg-red-700 text-white font-medium"
-        onClick={resetSettings}
-      >
-        <RotateCcw className="w-4 h-4 mr-2" />
-        Reset All Settings
-      </Button>
+      {/* Action Buttons */}
+      <div className="space-y-3">
+        <Button 
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-medium"
+          onClick={resetSettings}
+        >
+          <RotateCcw className="w-4 h-4 mr-2" />
+          Reset All Settings
+        </Button>
+        
+        <Button 
+          className="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium"
+          onClick={handleLogout}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Log Out
+        </Button>
+      </div>
     </section>
   );
 }

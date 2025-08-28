@@ -33,14 +33,25 @@ function Router() {
     );
   }
 
-  // Public routes (no authentication required)
+  // Public routes (no authentication required) - Show landing page with login button
   if (!isAuthenticated) {
     return (
-      <Switch>
-        <Route path="/register" component={RegisterPage} />
-        <Route path="/" component={LoginPage} />
-        <Route component={LoginPage} />
-      </Switch>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="max-w-md w-full space-y-8 p-8">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-foreground mb-4">Chess Learning App</h1>
+            <p className="text-lg text-muted-foreground mb-8">
+              Master chess with AI-powered lessons, real-time analysis, and comprehensive tournament management.
+            </p>
+            <a 
+              href="/api/login"
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+            >
+              Log in with Replit
+            </a>
+          </div>
+        </div>
+      </div>
     );
   }
 

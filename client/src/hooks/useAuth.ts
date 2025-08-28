@@ -1,29 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
-
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  eloRating: number;
-  isEloCalibrated: boolean;
-  onboardingCompleted: boolean;
-}
-
-interface AuthResponse {
-  user: User;
-}
+import { useQuery } from "@tanstack/react-query";
 
 export function useAuth() {
-  const { data, isLoading, error } = useQuery<AuthResponse>({
-    queryKey: ['/api/auth/me'],
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["/api/auth/user"],
     retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   return {
-    user: data?.user,
+    user,
     isLoading,
-    isAuthenticated: !!data?.user,
-    error,
+    isAuthenticated: !!user,
   };
 }

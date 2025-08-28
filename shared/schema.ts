@@ -1,13 +1,14 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, primaryKey, varchar, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, primaryKey, varchar, decimal, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  id: varchar("id").primaryKey(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
   eloRating: integer("elo_rating").notNull().default(1200),
   isEloCalibrated: boolean("is_elo_calibrated").notNull().default(false),
   gamesWon: integer("games_won").notNull().default(0),
@@ -16,8 +17,6 @@ export const users = pgTable("users", {
   lessonsCompleted: integer("lessons_completed").notNull().default(0),
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
   // Tournament-related fields
-  firstName: text("first_name"),
-  lastName: text("last_name"),
   dateOfBirth: timestamp("date_of_birth"),
   schoolId: integer("school_id"),
   primaryRole: text("primary_role").notNull().default('student'), // 'student', 'teacher', 'coach', 'organizer', 'parent', 'admin'
@@ -56,12 +55,17 @@ export const userLessonProgress = pgTable("user_lesson_progress", {
   completedAt: timestamp("completed_at"),
 });
 
-// Session storage table for authentication
-export const sessions = pgTable("sessions", {
-  sid: text("sid").primaryKey(),
-  sess: jsonb("sess").notNull(),
-  expire: timestamp("expire").notNull(),
-});
+// Session storage table.
+// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
 
 // Chess puzzles for ELO assessment
 export const puzzles = pgTable("puzzles", {
@@ -176,6 +180,9 @@ export const userTipProgress = pgTable("user_tip_progress", {
   rating: integer("rating"), // 1-5 stars user rating
   completedAt: timestamp("completed_at"),
 });
+
+export type UpsertUser = typeof users.$inferInsert;
+export type User = typeof users.$inferSelect;
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,

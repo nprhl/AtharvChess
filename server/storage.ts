@@ -3,7 +3,7 @@ import {
   dailyTips, userTipProgress, organizations, userRoles, teams, teamMembers,
   tournaments, tournamentSections, registrations, rounds, pairings, tournamentGames,
   appeals, ratingSnapshots, certificates, notifications,
-  type User, type InsertUser, type Game, type InsertGame,
+  type User, type UpsertUser, type Game, type InsertGame,
   type Lesson, type InsertLesson, type UserLessonProgress, 
   type InsertUserLessonProgress, type Settings, type InsertSettings,
   type Puzzle, type InsertPuzzle, type PuzzleAttempt, type InsertPuzzleAttempt,
@@ -14,11 +14,12 @@ import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Users
-  getUser(id: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
+  updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
 
   // Games
   getGamesByUserId(userId: number): Promise<Game[]>;
@@ -380,14 +381,14 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getUser(id: number): Promise<User | undefined> {
+  async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
+    // Note: username field removed for Replit Auth
+    return undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -416,13 +417,28 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: number, updates: Partial<User>): Promise<User | undefined> {
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
     const [user] = await db
       .update(users)
       .set(updates)
       .where(eq(users.id, id))
       .returning();
     return user || undefined;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
   }
 
   async getGamesByUserId(userId: number): Promise<Game[]> {

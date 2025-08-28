@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
-import { setupAuth, requireAuth, getCurrentUser, hashPassword } from "./auth";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { puzzleService } from "./puzzle-service";
 import { tipService } from "./tip-service";
 import { gameIntegration } from "./game-integration";
@@ -25,14 +25,26 @@ import { pairingAlgorithms } from "./pairing-algorithms";
 import { roundManagement } from "./round-management";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup authentication
-  setupAuth(app);
+  // Setup Replit authentication
+  await setupAuth(app);
   
   // Mount API routes
   app.use('/api/evals', evalRoutes);
   registerGameMoveRoutes(app);
 
-  // Authentication routes
+  // Auth user endpoint for Replit Auth
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Legacy authentication routes - kept for existing functionality
   app.post("/api/auth/register", async (req, res) => {
     try {
       const { username, email, password } = registerSchema.parse(req.body);
@@ -138,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== RBAC ROUTES ====================
 
   // Get user's permissions and roles
-  app.get("/api/rbac/me", requireAuth, async (req, res) => {
+  app.get("/api/rbac/me", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const { permissions, roles, scopes } = await getUserPermissions(user.id);
@@ -160,7 +172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Assign role to user (requires USER_ASSIGN_ROLES permission)
-  app.post("/api/rbac/assign-role", requireAuth, requirePermission(PERMISSIONS.USER_ASSIGN_ROLES), async (req, res) => {
+  app.post("/api/rbac/assign-role", isAuthenticated, requirePermission(PERMISSIONS.USER_ASSIGN_ROLES), async (req, res) => {
     try {
       const { userId, role, scope, expiresAt } = req.body;
       const granter = req.user as any;
@@ -183,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Revoke role from user (requires USER_ASSIGN_ROLES permission)
-  app.post("/api/rbac/revoke-role", requireAuth, requirePermission(PERMISSIONS.USER_ASSIGN_ROLES), async (req, res) => {
+  app.post("/api/rbac/revoke-role", isAuthenticated, requirePermission(PERMISSIONS.USER_ASSIGN_ROLES), async (req, res) => {
     try {
       const { userId, role, scope } = req.body;
       
@@ -205,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's roles (requires USER_VIEW_PII permission or own profile)
-  app.get("/api/rbac/user/:userId/roles", requireAuth, async (req, res) => {
+  app.get("/api/rbac/user/:userId/roles", isAuthenticated, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       const currentUser = req.user as any;
@@ -229,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== ORGANIZATION ROUTES ====================
 
   // Create organization (requires ORG_MANAGE permission)
-  app.post("/api/organizations", requireAuth, requirePermission(PERMISSIONS.ORG_MANAGE), async (req, res) => {
+  app.post("/api/organizations", isAuthenticated, requirePermission(PERMISSIONS.ORG_MANAGE), async (req, res) => {
     try {
       const orgData = insertOrganizationSchema.parse(req.body);
       const organization = await storage.createOrganization(orgData);
@@ -241,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get organization
-  app.get("/api/organizations/:id", requireAuth, async (req, res) => {
+  app.get("/api/organizations/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const organization = await storage.getOrganization(id);
@@ -258,7 +270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // List organizations
-  app.get("/api/organizations", requireAuth, async (req, res) => {
+  app.get("/api/organizations", isAuthenticated, async (req, res) => {
     try {
       const filters = req.query as any;
       const organizations = await storage.getOrganizations(filters);
@@ -270,7 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update organization (requires ORG_MANAGE permission)
-  app.patch("/api/organizations/:id", requireAuth, requirePermission(PERMISSIONS.ORG_MANAGE), async (req, res) => {
+  app.patch("/api/organizations/:id", isAuthenticated, requirePermission(PERMISSIONS.ORG_MANAGE), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const updates = req.body;
@@ -291,7 +303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== TOURNAMENT ROUTES ====================
 
   // Create tournament (requires TOURNAMENT_CREATE permission)
-  app.post("/api/tournaments", requireAuth, requirePermission(PERMISSIONS.TOURNAMENT_CREATE), async (req, res) => {
+  app.post("/api/tournaments", isAuthenticated, requirePermission(PERMISSIONS.TOURNAMENT_CREATE), async (req, res) => {
     try {
       // Transform date strings to proper Date objects before validation
       const transformedBody = {
@@ -312,7 +324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get tournament
-  app.get("/api/tournaments/:id", requireAuth, async (req, res) => {
+  app.get("/api/tournaments/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const tournament = await storage.getTournament(id);
@@ -329,7 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // List tournaments
-  app.get("/api/tournaments", requireAuth, async (req, res) => {
+  app.get("/api/tournaments", isAuthenticated, async (req, res) => {
     try {
       const filters = req.query as any;
       const tournaments = await storage.getTournaments(filters);
@@ -341,7 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update tournament (requires TOURNAMENT_EDIT permission)
-  app.patch("/api/tournaments/:id", requireAuth, requirePermission(PERMISSIONS.TOURNAMENT_EDIT), async (req, res) => {
+  app.patch("/api/tournaments/:id", isAuthenticated, requirePermission(PERMISSIONS.TOURNAMENT_EDIT), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const updates = req.body;
@@ -359,7 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/auth/me", getCurrentUser, async (req, res) => {
+  app.get("/api/auth/me", isAuthenticated, async (req, res) => {
     if (req.user) {
       const user = req.user as any;
       // Get fresh user data from database to ensure ELO is current
@@ -381,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ELO Assessment & Onboarding routes
-  app.get("/api/onboarding/puzzles", requireAuth, async (req, res) => {
+  app.get("/api/onboarding/puzzles", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const puzzles = await puzzleService.getAssessmentPuzzles(user.eloRating);
@@ -392,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/onboarding/puzzle-attempt", requireAuth, async (req, res) => {
+  app.post("/api/onboarding/puzzle-attempt", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const { puzzleId, solved, timeSpent, attemptedMoves } = req.body;
@@ -412,7 +424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/onboarding/complete", requireAuth, async (req, res) => {
+  app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -510,7 +522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lesson routes
-  app.get("/api/lessons", requireAuth, async (req, res) => {
+  app.get("/api/lessons", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const dbUser = await storage.getUser(user.id);
@@ -702,7 +714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // New endpoint for move analysis and blunder detection
-  app.post("/api/ai/analyze-move", requireAuth, async (req, res) => {
+  app.post("/api/ai/analyze-move", isAuthenticated, async (req, res) => {
     try {
       const { fen, moveToAnalyze, previousFen, difficulty = 'beginner' } = req.body;
       const user = req.user as any;
@@ -722,7 +734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // New endpoint for interactive chess conversation
-  app.post("/api/ai/chess-conversation", requireAuth, async (req, res) => {
+  app.post("/api/ai/chess-conversation", isAuthenticated, async (req, res) => {
     try {
       const { fen, question, context = "", difficulty = 'beginner' } = req.body;
       const user = req.user as any;
@@ -906,7 +918,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Daily Tips Routes
-  app.get("/api/tips/today", requireAuth, async (req, res) => {
+  app.get("/api/tips/today", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const tip = await tipService.getTodaysTipForUser(user.id);
@@ -922,7 +934,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     }
   });
 
-  app.get("/api/tips/category/:category", requireAuth, async (req, res) => {
+  app.get("/api/tips/category/:category", isAuthenticated, async (req, res) => {
     try {
       const { category } = req.params;
       const user = req.user as any;
@@ -934,7 +946,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     }
   });
 
-  app.post("/api/tips/:id/complete", requireAuth, async (req, res) => {
+  app.post("/api/tips/:id/complete", isAuthenticated, async (req, res) => {
     try {
       const tipId = parseInt(req.params.id);
       const user = req.user as any;
@@ -947,7 +959,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     }
   });
 
-  app.post("/api/tips/:id/bookmark", requireAuth, async (req, res) => {
+  app.post("/api/tips/:id/bookmark", isAuthenticated, async (req, res) => {
     try {
       const tipId = parseInt(req.params.id);
       const user = req.user as any;
@@ -960,7 +972,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     }
   });
 
-  app.post("/api/tips/:id/rate", requireAuth, async (req, res) => {
+  app.post("/api/tips/:id/rate", isAuthenticated, async (req, res) => {
     try {
       const tipId = parseInt(req.params.id);
       const { rating } = req.body;
@@ -978,7 +990,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     }
   });
 
-  app.get("/api/tips/bookmarks", requireAuth, async (req, res) => {
+  app.get("/api/tips/bookmarks", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const bookmarks = await tipService.getUserBookmarks(user.id);
@@ -989,7 +1001,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     }
   });
 
-  app.get("/api/tips/stats", requireAuth, async (req, res) => {
+  app.get("/api/tips/stats", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const stats = await tipService.getUserStats(user.id);
@@ -1001,7 +1013,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Game Integration Routes
-  app.post("/api/game/contextual-tip", requireAuth, async (req, res) => {
+  app.post("/api/game/contextual-tip", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const { fen, gamePhase } = req.body;
@@ -1018,7 +1030,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     }
   });
 
-  app.post("/api/game/learning-moment", requireAuth, async (req, res) => {
+  app.post("/api/game/learning-moment", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const { momentType, fen, moveSan } = req.body;
@@ -1035,7 +1047,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     }
   });
 
-  app.post("/api/game/situational-advice", requireAuth, async (req, res) => {
+  app.post("/api/game/situational-advice", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const { situation } = req.body;
@@ -1055,7 +1067,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   // ==================== TOURNAMENT REGISTRATION ROUTES ====================
 
   // Register for tournament
-  app.post("/api/tournaments/:id/register", requireAuth, async (req, res) => {
+  app.post("/api/tournaments/:id/register", isAuthenticated, async (req, res) => {
     try {
       const tournamentId = parseInt(req.params.id);
       if (isNaN(tournamentId)) {
@@ -1138,7 +1150,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Get user's tournament registrations
-  app.get("/api/users/me/registrations", requireAuth, async (req, res) => {
+  app.get("/api/users/me/registrations", isAuthenticated, async (req, res) => {
     try {
       const registrations = await registrationService.getUserRegistrations((req.user as any).id);
       res.json(registrations);
@@ -1151,7 +1163,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   // ==================== USER PROFILE ROUTES ====================
   
   // Get user profile details
-  app.get("/api/users/:id/profile", requireAuth, async (req, res) => {
+  app.get("/api/users/:id/profile", isAuthenticated, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       if (isNaN(userId)) {
@@ -1173,7 +1185,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Get user tournament history
-  app.get("/api/users/:id/tournament-history", requireAuth, async (req, res) => {
+  app.get("/api/users/:id/tournament-history", isAuthenticated, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       if (isNaN(userId)) {
@@ -1216,7 +1228,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Get user recent games
-  app.get("/api/users/:id/recent-games", requireAuth, async (req, res) => {
+  app.get("/api/users/:id/recent-games", isAuthenticated, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       if (isNaN(userId)) {
@@ -1347,7 +1359,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Get tournament rounds
-  app.get("/api/tournaments/:id/rounds", requireAuth, async (req, res) => {
+  app.get("/api/tournaments/:id/rounds", isAuthenticated, async (req, res) => {
     try {
       const tournamentId = parseInt(req.params.id);
       if (isNaN(tournamentId)) {
@@ -1363,7 +1375,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Get round details
-  app.get("/api/rounds/:id", requireAuth, async (req, res) => {
+  app.get("/api/rounds/:id", isAuthenticated, async (req, res) => {
     try {
       const roundId = parseInt(req.params.id);
       if (isNaN(roundId)) {
@@ -1383,7 +1395,7 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
   });
 
   // Get tournament standings
-  app.get("/api/tournaments/:id/standings", requireAuth, async (req, res) => {
+  app.get("/api/tournaments/:id/standings", isAuthenticated, async (req, res) => {
     try {
       const tournamentId = parseInt(req.params.id);
       if (isNaN(tournamentId)) {
