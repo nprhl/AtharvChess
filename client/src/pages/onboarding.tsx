@@ -175,6 +175,28 @@ export default function OnboardingPage() {
     return game.moves({ square, verbose: true }).map(move => move.to);
   };
 
+  const handleResetPuzzle = () => {
+    if (!currentPuzzle) return;
+    
+    try {
+      const newGame = new Chess(currentPuzzle.fen);
+      setGame(newGame);
+      setShowSolution(false);
+      setStartTime(Date.now());
+      toast({
+        title: 'Puzzle Reset',
+        description: 'Try again with the original position',
+      });
+    } catch (error) {
+      console.error('Error resetting puzzle:', error);
+      toast({
+        title: 'Error',
+        description: 'Unable to reset puzzle',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleShowSolution = () => {
     if (!currentPuzzle || !currentPuzzle.solution || currentPuzzle.solution.length === 0) {
       toast({
@@ -203,11 +225,37 @@ export default function OnboardingPage() {
       const moveFrom = firstMove.from;
       const moveTo = firstMove.to;
       
-      const move = newGame.move({ 
-        from: moveFrom, 
-        to: moveTo 
-      });
-      console.log('Move result:', move);
+      if (!moveFrom || !moveTo) {
+        throw new Error('Invalid move format in solution');
+      }
+      
+      // Try different move formats
+      let move = null;
+      
+      // Try standard move
+      try {
+        move = newGame.move({ from: moveFrom, to: moveTo });
+      } catch (e) {
+        console.log('Standard move failed, trying alternatives');
+      }
+      
+      // Try with promotion
+      if (!move && (moveTo.includes('8') || moveTo.includes('1'))) {
+        try {
+          move = newGame.move({ from: moveFrom, to: moveTo, promotion: 'q' });
+        } catch (e) {
+          console.log('Promotion move failed');
+        }
+      }
+      
+      // Try algebraic notation
+      if (!move) {
+        try {
+          move = newGame.move(moveFrom + moveTo);
+        } catch (e) {
+          console.log('Algebraic notation failed');
+        }
+      }
       
       if (move) {
         setGame(newGame);
@@ -216,36 +264,13 @@ export default function OnboardingPage() {
           description: `The correct move is ${moveFrom} to ${moveTo}`,
         });
       } else {
-        console.error('Invalid move in solution:', firstMove);
-        // Try with algebraic notation
-        const altMove = newGame.move(moveFrom + moveTo);
-        if (altMove) {
-          setGame(newGame);
-          toast({
-            title: 'Solution Shown',
-            description: `The correct move is ${moveFrom} to ${moveTo}`,
-          });
-        } else {
-          // Try promoting pawn moves
-          const promotionMove = newGame.move({ 
-            from: moveFrom, 
-            to: moveTo,
-            promotion: 'q'  // Default to queen promotion
-          });
-          if (promotionMove) {
-            setGame(newGame);
-            toast({
-              title: 'Solution Shown',
-              description: `The correct move is ${moveFrom} to ${moveTo} (promotes to Queen)`,
-            });
-          } else {
-            toast({
-              title: 'Error', 
-              description: 'Unable to show solution - invalid move',
-              variant: 'destructive',
-            });
-          }
-        }
+        console.error('All move attempts failed for:', firstMove);
+        toast({
+          title: 'Error', 
+          description: 'Unable to show solution - invalid move data',
+          variant: 'destructive',
+        });
+        return;
       }
     } catch (error) {
       console.error('Error showing solution:', error);
@@ -254,6 +279,7 @@ export default function OnboardingPage() {
         description: 'Unable to show solution',
         variant: 'destructive',
       });
+      return;
     }
     
     const attemptData = {
@@ -336,14 +362,24 @@ export default function OnboardingPage() {
                   ))}
                 </div>
                 <div className="space-y-3">
-                  <Button
-                    onClick={handleShowSolution}
-                    variant="outline"
-                    className="w-full"
-                    disabled={showSolution || recordAttemptMutation.isPending}
-                  >
-                    {showSolution ? 'Solution Shown' : 'Show Solution'}
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={handleResetPuzzle}
+                      variant="outline"
+                      className="w-full"
+                      disabled={recordAttemptMutation.isPending}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      onClick={handleShowSolution}
+                      variant="outline"
+                      className="w-full"
+                      disabled={showSolution || recordAttemptMutation.isPending}
+                    >
+                      {showSolution ? 'Solution Shown' : 'Show Solution'}
+                    </Button>
+                  </div>
                   {showSolution && (
                     <Button
                       onClick={handleNextPuzzle}
