@@ -794,26 +794,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "FEN string is required" });
       }
 
-      // Use Stockfish for real analysis
+      // Use Stockfish for real analysis with actual evaluation
       const stockfishAI = new StockfishAI('advanced'); // Always use advanced for analysis
       
       try {
-        const bestMove = await stockfishAI.getBestMove(fen);
+        const analysis = await stockfishAI.getAnalysis(fen);
         
-        if (!bestMove) {
+        if (!analysis) {
           return res.json({
             error: "No moves available",
             isAnalyzing: false
           });
         }
 
-        // Get detailed evaluation (for now, simplified - could be enhanced)
+        // Return real Stockfish evaluation data
         const evaluation = {
-          bestMove: bestMove.san,
-          bestMoveUci: `${bestMove.from}${bestMove.to}`,
-          score: Math.floor(Math.random() * 200 - 100), // Placeholder - real eval would need engine output parsing
-          depth: depth,
-          pv: [bestMove.san]
+          bestMove: analysis.bestMoveSan,
+          bestMoveUci: analysis.bestMove,
+          score: analysis.evaluation, // Real centipawn score from Stockfish
+          depth: analysis.depth,       // Real depth analyzed
+          pv: analysis.pv             // Real principal variation
         };
 
         res.json({

@@ -8,6 +8,14 @@ interface StockfishConfig {
   moveTime: number; // milliseconds
 }
 
+interface StockfishAnalysis {
+  bestMove: string;
+  bestMoveSan: string;
+  evaluation: number; // centipawns
+  depth: number;
+  pv: string[];
+}
+
 export class StockfishAI {
   private stockfishProcess: ChildProcessWithoutNullStreams | null = null;
   private difficulty: Difficulty;
@@ -91,6 +99,114 @@ export class StockfishAI {
       }
     }
     return null;
+  }
+
+  private extractEvaluation(output: string): { score: number; depth: number; pv: string[] } {
+    const lines = output.split('\n');
+    let bestScore = 0;
+    let bestDepth = 0;
+    let bestPv: string[] = [];
+    
+    for (const line of lines) {
+      if (line.startsWith('info ') && line.includes('score')) {
+        const depthMatch = line.match(/depth (\d+)/);
+        const scoreMatch = line.match(/score (cp|mate) (-?\d+)/);
+        const pvMatch = line.match(/pv (.+)/);
+        
+        if (depthMatch && scoreMatch) {
+          const depth = parseInt(depthMatch[1]);
+          const [, type, value] = scoreMatch;
+          
+          if (depth >= bestDepth) {
+            bestDepth = depth;
+            
+            if (type === 'cp') {
+              bestScore = parseInt(value);
+            } else if (type === 'mate') {
+              const mateIn = parseInt(value);
+              bestScore = mateIn > 0 ? 30000 : -30000;
+            }
+            
+            if (pvMatch) {
+              bestPv = pvMatch[1].split(' ').slice(0, 5); // First 5 moves of PV
+            }
+          }
+        }
+      }
+    }
+    
+    return { score: bestScore, depth: bestDepth, pv: bestPv };
+  }
+
+  public async getAnalysis(fen: string): Promise<StockfishAnalysis | null> {
+    try {
+      await this.initStockfish();
+      
+      if (!this.stockfishProcess) {
+        throw new Error('Stockfish not initialized');
+      }
+
+      const config = this.getStockfishConfig();
+      const chess = new Chess(fen);
+
+      // Send position to stockfish
+      this.stockfishProcess.stdin.write(`position fen ${fen}\n`);
+      this.stockfishProcess.stdin.write(`go depth ${config.depth} movetime ${config.moveTime}\n`);
+
+      // Capture both move and evaluation
+      const analysisResult = await new Promise<{ bestMove: string; output: string }>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Stockfish analysis timeout'));
+        }, config.moveTime + 2000);
+
+        let buffer = '';
+        const onData = (data: Buffer) => {
+          buffer += data.toString();
+          const bestMove = this.extractBestMove(buffer);
+          if (bestMove) {
+            clearTimeout(timeout);
+            this.stockfishProcess?.stdout.removeListener('data', onData);
+            resolve({ bestMove, output: buffer });
+          }
+        };
+
+        this.stockfishProcess!.stdout.on('data', onData);
+      });
+
+      const { bestMove: bestMoveUci, output } = analysisResult;
+      
+      if (!bestMoveUci || bestMoveUci === '(none)') {
+        return null;
+      }
+
+      // Convert UCI move to chess.js move format
+      const from = bestMoveUci.slice(0, 2);
+      const to = bestMoveUci.slice(2, 4);
+      const promotion = bestMoveUci.length > 4 ? bestMoveUci[4] : undefined;
+      const moveObj = { from, to, promotion };
+      const move = chess.move(moveObj);
+      
+      if (!move) {
+        console.log('Stockfish returned invalid move:', bestMoveUci);
+        return null;
+      }
+
+      // Extract evaluation from output
+      const evaluation = this.extractEvaluation(output);
+      
+      console.log(`Stockfish analysis: ${move.san} (${evaluation.score}cp at depth ${evaluation.depth})`);
+      
+      return {
+        bestMove: bestMoveUci,
+        bestMoveSan: move.san,
+        evaluation: evaluation.score,
+        depth: evaluation.depth,
+        pv: evaluation.pv
+      };
+    } catch (error) {
+      console.log('Stockfish analysis error:', error);
+      return null;
+    }
   }
 
   public async getBestMove(fen: string): Promise<Move | null> {
