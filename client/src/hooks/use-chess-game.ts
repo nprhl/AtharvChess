@@ -41,8 +41,9 @@ export function useChessGame(options: UseChessGameOptions = {}) {
 
   // Force re-render when game state changes
   const triggerUpdate = useCallback(() => {
+    console.log('Triggering game update - FEN:', gameEngine.fen(), 'Turn:', gameEngine.turn);
     forceUpdate(prev => prev + 1);
-  }, []);
+  }, [gameEngine]);
 
   // Auto-save game state
   const saveGameState = useCallback(() => {
@@ -104,7 +105,9 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Computer move received:', data.move, 'Current FEN before move:', gameEngine.fen());
         const success = gameEngine.makeMove(data.move.from, data.move.to, data.move.promotion);
+        console.log('Computer move success:', success, 'New FEN:', gameEngine.fen());
         if (success) {
           // Update last move for highlighting (computer move)
           setLastMove({ from: data.move.from, to: data.move.to });

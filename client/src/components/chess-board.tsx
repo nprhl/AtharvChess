@@ -29,7 +29,11 @@ export default function ChessBoard({ game, onMove, getValidMoves, lastMove, disa
   const [dragOverSquare, setDragOverSquare] = useState<Square | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
 
+  // Force board to re-render by getting fresh board state
   const board = game.board();
+  
+  // Debug: Log when board updates to track state changes
+  console.log('ChessBoard render - FEN:', game.fen(), 'Turn:', game.turn());
   
   const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
   const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
