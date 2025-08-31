@@ -110,6 +110,7 @@ export default function GamePage() {
         
         // Speak the hint aloud
         const hintText = data.hint.explanation || data.hint.suggestedMove || 'Here is a helpful hint for your current position.';
+        console.log('Speaking hint:', hintText); // Debug speech
         speakHint(hintText);
       }
     } catch (error) {
