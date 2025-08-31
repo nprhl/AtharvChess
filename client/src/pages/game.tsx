@@ -166,12 +166,18 @@ export default function GamePage() {
 
           {/* Action Buttons */}
           <div className="flex gap-3">
-            <Link href="/">
-              <Button variant="outline" size="sm" className="flex-1">
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Home
+            {moveHistory.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1"
+                onClick={() => undoMove()}
+                disabled={isComputerThinking}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Undo
               </Button>
-            </Link>
+            )}
 
             <Link href="/settings">
               <Button variant="outline" size="sm" className="flex-1">
@@ -180,29 +186,15 @@ export default function GamePage() {
               </Button>
             </Link>
 
-            {isGameInProgress && moveHistory.length > 0 && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1"
-                onClick={() => undoMove()}
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Undo
-              </Button>
-            )}
-
-            {isGameInProgress && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1"
-                onClick={handleNewGame}
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                New Game
-              </Button>
-            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1"
+              onClick={handleNewGame}
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              New Game
+            </Button>
 
             {settings.hintsEnabled && !isGameOver() && (
               <Button 
