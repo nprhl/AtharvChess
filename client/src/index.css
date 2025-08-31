@@ -86,23 +86,23 @@
   }
 
   .chess-piece-white {
-    color: #ffffff;
+    color: #ffffff !important;
     text-shadow:
       -1px -1px 0 #000,
       1px -1px 0 #000,
       -1px 1px 0 #000,
       1px 1px 0 #000,
-      0 0 3px rgba(0, 0, 0, 0.8);
+      0 0 3px rgba(0, 0, 0, 0.9);
   }
 
   .chess-piece-black {
-    color: #1a1a1a;
+    color: #1a1a1a !important;
     text-shadow:
       -1px -1px 0 #fff,
       1px -1px 0 #fff,
       -1px 1px 0 #fff,
       1px 1px 0 #fff,
-      0 0 3px rgba(255, 255, 255, 0.8);
+      0 0 3px rgba(255, 255, 255, 0.9);
   }
 
   .chess-piece:active {
@@ -121,7 +121,7 @@
   }
 
   .chess-square:hover {
-    box-shadow: inset 0 0 0 2px hsl(207, 90%, 54%);
+    box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.6);
   }
 
   .chess-piece.dragging {
