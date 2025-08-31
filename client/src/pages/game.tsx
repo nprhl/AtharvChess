@@ -2,6 +2,7 @@ import { useState } from "react";
 import ChessBoard from "@/components/chess-board";
 import AIHintCard from "@/components/ai-hint-card";
 import PromotionDialog from "@/components/promotion-dialog";
+import SpeechCaption from "@/components/speech-caption";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useEffect, useCallback } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
@@ -11,11 +12,13 @@ import { useEngineAnalysis } from "@/hooks/useEngineAnalysis";
 import { EngineAnalysisPanel } from "@/components/chess/EngineAnalysisPanel";
 import { BlunderMeter } from "../components/chess/BlunderMeter";
 import { Link } from 'wouter';
+import { speakMove, speakEducationalFeedback } from "@/lib/tts";
 
 export default function GamePage() {
   const [settings, setSettings] = useLocalStorage('chess-settings', {
     hintsEnabled: true,
     moveAnnouncementsEnabled: false,
+    educationalFeedbackEnabled: true,
     focusMode: false,
     progressTracking: true,
     dailyPlayTime: 30,
@@ -54,6 +57,7 @@ export default function GamePage() {
   const [showHint, setShowHint] = useState(false);
   const [currentHint, setCurrentHint] = useState<any>(null);
   const [learningTips, setLearningTips] = useState<string[]>([]);
+  const [lastMoveForTTS, setLastMoveForTTS] = useState<string | null>(null);
   const [suggestedMove, setSuggestedMove] = useState<string | null>(null);
   
   // Engine analysis for blunder detection and real-time analysis
@@ -63,6 +67,39 @@ export default function GamePage() {
   useEffect(() => {
     analyze(game);
   }, [game.fen(), analyze]);
+
+  // Handle move announcements with TTS
+  useEffect(() => {
+    if (settings.moveAnnouncementsEnabled && moveHistory.length > 0) {
+      const latestMove = moveHistory[moveHistory.length - 1];
+      if (latestMove && latestMove.san !== lastMoveForTTS) {
+        setLastMoveForTTS(latestMove.san);
+        const currentTurnColor = turn === 'w' ? 'black' : 'white'; // Previous turn made the move
+        speakMove(latestMove.san, currentTurnColor);
+      }
+    }
+  }, [moveHistory, settings.moveAnnouncementsEnabled, lastMoveForTTS, turn]);
+
+  // Provide educational feedback based on engine analysis
+  useEffect(() => {
+    if (engineAnalysis && settings.educationalFeedbackEnabled && moveHistory.length > 0) {
+      const { evaluation, bestMove } = engineAnalysis;
+      
+      // Only provide feedback for significant evaluation changes
+      if (evaluation) {
+        const currentEval = evaluation.value || 0;
+        
+        // Detect blunders (evaluation swing of more than 200 centipawns)
+        if (Math.abs(currentEval) > 200) {
+          if (currentEval > 200) {
+            speakEducationalFeedback("Great move! You gained a significant advantage.");
+          } else if (currentEval < -200) {
+            speakEducationalFeedback("That move gave your opponent an advantage. Consider the suggested move.");
+          }
+        }
+      }
+    }
+  }, [engineAnalysis, settings.educationalFeedbackEnabled, moveHistory.length]);
 
   const handleGetHint = useCallback(async () => {
     try {
@@ -258,6 +295,9 @@ export default function GamePage() {
         onPromotion={handlePromotion}
         playerColor={playerColor}
       />
+      
+      {/* Speech Caption for TTS */}
+      <SpeechCaption />
     </div>
   );
 }
