@@ -32,6 +32,7 @@ export default function GamePage() {
   const { 
     game, 
     makeMove, 
+    makeComputerMove,
     undoMove, 
     getValidMoves, 
     isGameOver, 
@@ -65,6 +66,22 @@ export default function GamePage() {
   useEffect(() => {
     analyze(game);
   }, [game.fen(), analyze]);
+
+  // Auto-trigger computer moves when it's computer's turn
+  useEffect(() => {
+    if (gameMode === 'pvc' && !isComputerThinking && !isGameOver()) {
+      const isComputerTurn = (playerColor === 'w' && turn === 'b') || 
+                            (playerColor === 'b' && turn === 'w');
+      
+      if (isComputerTurn) {
+        const timer = setTimeout(() => {
+          makeComputerMove();
+        }, 800);
+        
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [gameMode, turn, playerColor, isComputerThinking, isGameOver, makeComputerMove]);
 
   const handleGetHint = useCallback(async () => {
     try {

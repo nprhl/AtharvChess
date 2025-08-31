@@ -44,9 +44,11 @@ export function BlunderMeter({
       return;
     }
 
-    // Only analyze player moves in PvC mode, or all moves in PvP mode
+    // Only analyze when it's the player's move that just completed
+    // In PvC mode: analyze when it's now computer's turn (player just moved)
+    // In PvP mode: analyze all moves
     const shouldAnalyze = gameMode === 'pvp' || 
-                         (gameMode === 'pvc' && currentTurn === playerColor);
+                         (gameMode === 'pvc' && currentTurn !== playerColor);
     
     if (!shouldAnalyze) {
       previousAnalysis.current = engineAnalysis;

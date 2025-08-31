@@ -39,14 +39,14 @@ export function calculateBlunderMeter(
   let moveQuality: BlunderMeterResult['moveQuality'] = 'ok';
   let description = 'Position analysis in progress...';
 
-  // Only analyze when it's the human player's turn in PvC mode
-  if (gameMode === 'pvc' && currentTurn === playerColor) {
+  // Skip analysis during computer's turn in PvC mode
+  if (gameMode === 'pvc' && currentTurn !== playerColor) {
     return {
       blunder: 0.1,
       ok: 0.2,
       good: 0.7,
       moveQuality: 'good',
-      description: 'Your turn to play'
+      description: 'Computer is thinking...'
     };
   }
 
