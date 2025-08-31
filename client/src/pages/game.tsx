@@ -85,7 +85,7 @@ export default function GamePage() {
 
   const handleGetHint = useCallback(async () => {
     try {
-      const response = await fetch('/api/chess/hint', {
+      const response = await fetch('/api/ai/hint', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -102,14 +102,22 @@ export default function GamePage() {
       }
 
       const data = await response.json();
-      if (data.success && data.hint) {
-        setCurrentHint(data.hint);
+      console.log('Hint response:', data); // Debug hint response
+      if (data.hint) {
+        const hintData = {
+          suggestedMove: data.move ? `${data.move.from}${data.move.to}` : '',
+          explanation: data.explanation || data.hint,
+          tactical: [],
+          strategic: [],
+          rating: 0
+        };
+        setCurrentHint(hintData);
         setLearningTips(data.learningTips || []);
-        setSuggestedMove(data.hint.suggestedMove);
+        setSuggestedMove(hintData.suggestedMove);
         setShowHint(true);
         
         // Speak the hint aloud
-        const hintText = data.hint.explanation || data.hint.suggestedMove || 'Here is a helpful hint for your current position.';
+        const hintText = data.explanation || data.hint || 'Here is a helpful hint for your current position.';
         console.log('Speaking hint:', hintText); // Debug speech
         speakHint(hintText);
       }
