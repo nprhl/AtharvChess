@@ -129,6 +129,12 @@ export default function ChessBoard({ game, onMove, getValidMoves, lastMove, disa
         {piece && (
           <span
             className={`chess-piece ${pieceColorClass} ${pieceSizeClass} ${isDragging ? 'dragging' : ''}`}
+            style={{
+              color: piece.color === 'w' ? '#ffffff' : '#1a1a1a',
+              textShadow: piece.color === 'w' 
+                ? '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 3px rgba(0, 0, 0, 0.9)'
+                : '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 3px rgba(255, 255, 255, 0.9)'
+            }}
             draggable={!disabled && piece.color === game.turn()}
             onDragStart={(e) => {
               const canDrag = handleDragStart(piece, square);
