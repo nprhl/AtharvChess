@@ -1,10 +1,9 @@
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo } from 'react';
 import { Progress } from '../ui/progress';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { AlertTriangle, CheckCircle, TrendingUp, Brain } from 'lucide-react';
 import { calculateBlunderMeter, type BlunderMeterResult } from '../../lib/blunder-calculation';
-import { speakHint } from '@/lib/tts';
 
 interface BlunderMeterProps {
   engineAnalysis: any;
@@ -21,8 +20,6 @@ export function BlunderMeter({
   currentTurn, 
   className = '' 
 }: BlunderMeterProps) {
-  const previousAnalysis = useRef<any>(null);
-  
   const blunderResult: BlunderMeterResult = useMemo(() => {
     if (!engineAnalysis) {
       return {
@@ -36,42 +33,6 @@ export function BlunderMeter({
 
     return calculateBlunderMeter(engineAnalysis, gameMode, playerColor, currentTurn);
   }, [engineAnalysis, gameMode, playerColor, currentTurn]);
-
-  // Provide intelligent speech feedback based on move analysis - ONLY for human player moves
-  useEffect(() => {
-    if (!engineAnalysis || !previousAnalysis.current) {
-      previousAnalysis.current = engineAnalysis;
-      return;
-    }
-
-    // Only analyze when it's the player's move that just completed
-    // In PvC mode: analyze when it's now computer's turn (player just moved)
-    // In PvP mode: analyze all moves
-    const shouldAnalyze = gameMode === 'pvp' || 
-                         (gameMode === 'pvc' && currentTurn !== playerColor);
-    
-    if (!shouldAnalyze) {
-      previousAnalysis.current = engineAnalysis;
-      return;
-    }
-
-    const { moveQuality, description } = blunderResult;
-    
-    // Only speak for significant moves (not routine "ok" moves)
-    if (moveQuality === 'brilliant' || moveQuality === 'excellent') {
-      speakHint(`Excellent move! ${description}`);
-    } else if (moveQuality === 'blunder') {
-      const bestMove = engineAnalysis.stockfish?.bestMove;
-      const suggestion = bestMove ? ` Consider ${bestMove} instead.` : '';
-      speakHint(`That was a blunder. ${description}${suggestion}`);
-    } else if (moveQuality === 'mistake') {
-      const bestMove = engineAnalysis.stockfish?.bestMove;
-      const suggestion = bestMove ? ` A better move would be ${bestMove}.` : '';
-      speakHint(`Not the best move. ${description}${suggestion}`);
-    }
-    
-    previousAnalysis.current = engineAnalysis;
-  }, [blunderResult, engineAnalysis, gameMode, playerColor, currentTurn]);
 
   const { blunder, ok, good, moveQuality, description } = blunderResult;
 
