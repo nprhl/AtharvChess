@@ -39,14 +39,14 @@ export function calculateBlunderMeter(
   let moveQuality: BlunderMeterResult['moveQuality'] = 'ok';
   let description = 'Position analysis in progress...';
 
-  // Show neutral analysis when waiting for player in PvC mode
-  if (gameMode === 'pvc' && currentTurn === playerColor) {
+  // Only analyze when it's the human player's turn in PvC mode
+  if (gameMode === 'pvc' && currentTurn !== playerColor) {
     return {
-      blunder: 0.2,
-      ok: 0.5,
-      good: 0.3,
-      moveQuality: 'ok',
-      description: 'Your turn - make your move'
+      blunder: 0.1,
+      ok: 0.2,
+      good: 0.7,
+      moveQuality: 'good',
+      description: 'AI coach is thinking...'
     };
   }
 

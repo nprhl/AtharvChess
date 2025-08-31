@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { Chess, Square, Move } from 'chess.js';
 import { ChessGameEngine } from '@/lib/chess-game';
 import { GameStorageManager, type GameState } from '@/lib/local-storage';
-import { ttsService } from '@/lib/tts';
 
 export type GameMode = 'pvp' | 'pvc'; // Player vs Player or Player vs Computer
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
@@ -171,8 +170,6 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       
       // Clear any pending promotion
       setPromotionPending(null);
-      
-      // Move speech removed - only speak analysis and suggestions
       
       // Move evaluation is now handled by Stockfish analysis automatically
       

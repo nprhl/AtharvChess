@@ -11,8 +11,6 @@ import { useEngineAnalysis } from "@/hooks/useEngineAnalysis";
 import { EngineAnalysisPanel } from "@/components/chess/EngineAnalysisPanel";
 import { BlunderMeter } from "../components/chess/BlunderMeter";
 import { Link } from 'wouter';
-import { speakHint } from '@/lib/tts';
-import TTSControls from '@/components/tts-controls';
 
 export default function GamePage() {
   const [settings, setSettings] = useLocalStorage('chess-settings', {
@@ -32,7 +30,6 @@ export default function GamePage() {
   const { 
     game, 
     makeMove, 
-    makeComputerMove,
     undoMove, 
     getValidMoves, 
     isGameOver, 
@@ -67,25 +64,9 @@ export default function GamePage() {
     analyze(game);
   }, [game.fen(), analyze]);
 
-  // Auto-trigger computer moves when it's computer's turn
-  useEffect(() => {
-    if (gameMode === 'pvc' && !isComputerThinking && !isGameOver()) {
-      const isComputerTurn = (playerColor === 'w' && turn === 'b') || 
-                            (playerColor === 'b' && turn === 'w');
-      
-      if (isComputerTurn) {
-        const timer = setTimeout(() => {
-          makeComputerMove();
-        }, 800);
-        
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [gameMode, turn, playerColor, isComputerThinking, isGameOver, makeComputerMove]);
-
   const handleGetHint = useCallback(async () => {
     try {
-      const response = await fetch('/api/ai/hint', {
+      const response = await fetch('/api/chess/hint', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -102,24 +83,11 @@ export default function GamePage() {
       }
 
       const data = await response.json();
-      console.log('Hint response:', data); // Debug hint response
-      if (data.hint) {
-        const hintData = {
-          suggestedMove: data.move ? `${data.move.from}${data.move.to}` : '',
-          explanation: data.explanation || data.hint,
-          tactical: [],
-          strategic: [],
-          rating: 0
-        };
-        setCurrentHint(hintData);
+      if (data.success && data.hint) {
+        setCurrentHint(data.hint);
         setLearningTips(data.learningTips || []);
-        setSuggestedMove(hintData.suggestedMove);
+        setSuggestedMove(data.hint.suggestedMove);
         setShowHint(true);
-        
-        // Speak the hint aloud
-        const hintText = data.explanation || data.hint || 'Here is a helpful hint for your current position.';
-        console.log('Speaking hint:', hintText); // Debug speech
-        speakHint(hintText);
       }
     } catch (error) {
       console.error('Error getting hint:', error);
@@ -258,7 +226,6 @@ export default function GamePage() {
       {/* Engine Analysis Panel - Desktop Only */}
       {isDesktop && !settings.focusMode && (
         <div className="w-80 flex-shrink-0 space-y-4">
-          <TTSControls compact={false} />
           <EngineAnalysisPanel 
             analysis={engineAnalysis}
             className="sticky top-4"
@@ -273,10 +240,9 @@ export default function GamePage() {
         </div>
       )}
 
-      {/* Blunder Meter and TTS Controls - Mobile Only */}
+      {/* Blunder Meter - Mobile Only */}
       {!isDesktop && (
-        <div className="p-3 space-y-3">
-          <TTSControls compact={true} />
+        <div className="p-3">
           <BlunderMeter 
             engineAnalysis={engineAnalysis}
             gameMode={gameMode}
