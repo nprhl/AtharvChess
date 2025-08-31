@@ -11,6 +11,8 @@ import { useEngineAnalysis } from "@/hooks/useEngineAnalysis";
 import { EngineAnalysisPanel } from "@/components/chess/EngineAnalysisPanel";
 import { BlunderMeter } from "../components/chess/BlunderMeter";
 import { Link } from 'wouter';
+import { speakHint } from '@/lib/tts';
+import TTSControls from '@/components/tts-controls';
 
 export default function GamePage() {
   const [settings, setSettings] = useLocalStorage('chess-settings', {
@@ -88,6 +90,10 @@ export default function GamePage() {
         setLearningTips(data.learningTips || []);
         setSuggestedMove(data.hint.suggestedMove);
         setShowHint(true);
+        
+        // Speak the hint aloud
+        const hintText = data.hint.explanation || data.hint.suggestedMove || 'Here is a helpful hint for your current position.';
+        speakHint(hintText);
       }
     } catch (error) {
       console.error('Error getting hint:', error);
@@ -226,6 +232,7 @@ export default function GamePage() {
       {/* Engine Analysis Panel - Desktop Only */}
       {isDesktop && !settings.focusMode && (
         <div className="w-80 flex-shrink-0 space-y-4">
+          <TTSControls compact={false} />
           <EngineAnalysisPanel 
             analysis={engineAnalysis}
             className="sticky top-4"
@@ -240,9 +247,10 @@ export default function GamePage() {
         </div>
       )}
 
-      {/* Blunder Meter - Mobile Only */}
+      {/* Blunder Meter and TTS Controls - Mobile Only */}
       {!isDesktop && (
-        <div className="p-3">
+        <div className="p-3 space-y-3">
+          <TTSControls compact={true} />
           <BlunderMeter 
             engineAnalysis={engineAnalysis}
             gameMode={gameMode}
