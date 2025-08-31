@@ -172,11 +172,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       // Clear any pending promotion
       setPromotionPending(null);
       
-      // Speak the move that was made
-      if (lastMoveHistory) {
-        const moveColor = lastMoveHistory.color === 'w' ? 'white' : 'black';
-        ttsService.speakMove(lastMoveHistory.san, moveColor);
-      }
+      // Move speech removed - only speak analysis and suggestions
       
       // Move evaluation is now handled by Stockfish analysis automatically
       
