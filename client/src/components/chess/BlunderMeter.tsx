@@ -37,9 +37,18 @@ export function BlunderMeter({
     return calculateBlunderMeter(engineAnalysis, gameMode, playerColor, currentTurn);
   }, [engineAnalysis, gameMode, playerColor, currentTurn]);
 
-  // Provide intelligent speech feedback based on move analysis
+  // Provide intelligent speech feedback based on move analysis - ONLY for human player moves
   useEffect(() => {
     if (!engineAnalysis || !previousAnalysis.current) {
+      previousAnalysis.current = engineAnalysis;
+      return;
+    }
+
+    // Only analyze player moves in PvC mode, or all moves in PvP mode
+    const shouldAnalyze = gameMode === 'pvp' || 
+                         (gameMode === 'pvc' && currentTurn === playerColor);
+    
+    if (!shouldAnalyze) {
       previousAnalysis.current = engineAnalysis;
       return;
     }
@@ -60,7 +69,7 @@ export function BlunderMeter({
     }
     
     previousAnalysis.current = engineAnalysis;
-  }, [blunderResult, engineAnalysis]);
+  }, [blunderResult, engineAnalysis, gameMode, playerColor, currentTurn]);
 
   const { blunder, ok, good, moveQuality, description } = blunderResult;
 
