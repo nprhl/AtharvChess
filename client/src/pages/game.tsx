@@ -70,20 +70,11 @@ export default function GamePage() {
 
   // Handle move announcements with TTS
   useEffect(() => {
-    console.log('TTS Check:', {
-      moveAnnouncementsEnabled: settings.moveAnnouncementsEnabled,
-      ttsEnabled: ttsService.getSettings().enabled,
-      ttsSupported: ttsService.isSupported(),
-      moveHistoryLength: moveHistory.length,
-      lastMove: moveHistory[moveHistory.length - 1]?.san
-    });
-    
     if (settings.moveAnnouncementsEnabled && ttsService.getSettings().enabled && moveHistory.length > 0) {
       const latestMove = moveHistory[moveHistory.length - 1];
       if (latestMove && latestMove.san !== lastMoveForTTS) {
         setLastMoveForTTS(latestMove.san);
         const currentTurnColor = turn === 'w' ? 'black' : 'white'; // Previous turn made the move
-        console.log('Speaking move:', latestMove.san, 'for', currentTurnColor);
         speakMove(latestMove.san, currentTurnColor);
       }
     }
@@ -92,11 +83,14 @@ export default function GamePage() {
   // Provide educational feedback based on engine analysis
   useEffect(() => {
     if (engineAnalysis && settings.educationalFeedbackEnabled && moveHistory.length > 0) {
-      const { evaluation, bestMove } = engineAnalysis;
+      // Try to get evaluation from different possible structures
+      const evaluation = engineAnalysis.stockfish?.evaluation || 
+                        (engineAnalysis as any).evaluation || 
+                        engineAnalysis.stockfish?.bestEvaluation;
       
       // Only provide feedback for significant evaluation changes
-      if (evaluation) {
-        const currentEval = evaluation.value || 0;
+      if (evaluation && typeof evaluation === 'number') {
+        const currentEval = evaluation;
         
         // Detect blunders (evaluation swing of more than 200 centipawns)
         if (Math.abs(currentEval) > 200) {
@@ -253,19 +247,6 @@ export default function GamePage() {
               </Button>
             )}
 
-            {/* TTS Test Button */}
-            <Button 
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={() => {
-                console.log('TTS Test - Settings:', ttsService.getSettings());
-                console.log('TTS Test - Supported:', ttsService.isSupported());
-                ttsService.speakHint("Test: TTS is working! You can hear chess move announcements.");
-              }}
-            >
-              🔊 Test
-            </Button>
           </div>
 
           {/* Game Over Message */}

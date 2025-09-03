@@ -38,8 +38,14 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize storage first
-  await initializeStorage();
+  // Initialize storage first - with error handling for database issues
+  try {
+    await initializeStorage();
+    console.log('Database storage initialized successfully');
+  } catch (error: any) {
+    console.warn('Failed to initialize database storage:', error?.message || error);
+    console.log('App will start with limited functionality (database features disabled)');
+  }
 
   const server = await registerRoutes(app);
 
