@@ -12,7 +12,7 @@ import { useEngineAnalysis } from "@/hooks/useEngineAnalysis";
 import { EngineAnalysisPanel } from "@/components/chess/EngineAnalysisPanel";
 import { BlunderMeter } from "../components/chess/BlunderMeter";
 import { Link } from 'wouter';
-import { speakMove, speakEducationalFeedback } from "@/lib/tts";
+import { speakMove, speakEducationalFeedback, ttsService } from "@/lib/tts";
 
 export default function GamePage() {
   const [settings, setSettings] = useLocalStorage('chess-settings', {
@@ -70,11 +70,20 @@ export default function GamePage() {
 
   // Handle move announcements with TTS
   useEffect(() => {
-    if (settings.moveAnnouncementsEnabled && moveHistory.length > 0) {
+    console.log('TTS Check:', {
+      moveAnnouncementsEnabled: settings.moveAnnouncementsEnabled,
+      ttsEnabled: ttsService.getSettings().enabled,
+      ttsSupported: ttsService.isSupported(),
+      moveHistoryLength: moveHistory.length,
+      lastMove: moveHistory[moveHistory.length - 1]?.san
+    });
+    
+    if (settings.moveAnnouncementsEnabled && ttsService.getSettings().enabled && moveHistory.length > 0) {
       const latestMove = moveHistory[moveHistory.length - 1];
       if (latestMove && latestMove.san !== lastMoveForTTS) {
         setLastMoveForTTS(latestMove.san);
         const currentTurnColor = turn === 'w' ? 'black' : 'white'; // Previous turn made the move
+        console.log('Speaking move:', latestMove.san, 'for', currentTurnColor);
         speakMove(latestMove.san, currentTurnColor);
       }
     }
@@ -243,6 +252,20 @@ export default function GamePage() {
                 <HelpCircle className="w-4 h-4" />
               </Button>
             )}
+
+            {/* TTS Test Button */}
+            <Button 
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => {
+                console.log('TTS Test - Settings:', ttsService.getSettings());
+                console.log('TTS Test - Supported:', ttsService.isSupported());
+                ttsService.speakHint("Test: TTS is working! You can hear chess move announcements.");
+              }}
+            >
+              🔊 Test
+            </Button>
           </div>
 
           {/* Game Over Message */}
