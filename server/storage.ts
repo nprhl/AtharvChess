@@ -90,12 +90,18 @@ export class DatabaseStorage implements IStorage {
     if (this.initialized) return;
     
     try {
+      // Test database connectivity first
+      await db.select().from(lessons).limit(1);
+      
       // Initialize with default content
       await this.initializeDefaultLessons();
       await this.initializeDefaultTips();
       this.initialized = true;
+      console.log('Database storage fully initialized');
     } catch (error) {
-      console.error('Failed to initialize storage:', error);
+      console.warn('Database initialization failed, continuing without database features');
+      // Mark as initialized to prevent repeated attempts
+      this.initialized = true;
       // Don't rethrow - allow app to start even if initialization fails
     }
   }

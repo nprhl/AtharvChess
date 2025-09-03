@@ -38,13 +38,16 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize storage first - with error handling for database issues
+  // Initialize storage with graceful fallback - don't block app startup
+  let databaseAvailable = false;
   try {
     await initializeStorage();
     console.log('Database storage initialized successfully');
+    databaseAvailable = true;
   } catch (error: any) {
-    console.warn('Failed to initialize database storage:', error?.message || error);
-    console.log('App will start with limited functionality (database features disabled)');
+    console.warn('Database unavailable - continuing with limited functionality');
+    console.warn('Core features (chess game, TTS, AI analysis) will work normally');
+    console.warn('Database features (accounts, lessons, tournaments) will be disabled');
   }
 
   const server = await registerRoutes(app);
