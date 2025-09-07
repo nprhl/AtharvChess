@@ -43,9 +43,9 @@ export function configurePassport() {
             return done(null, false, { message: 'Invalid email or password' });
           }
 
-          // Check if user has password hash (form-based user) or is Replit user
+          // Check if user has password hash
           if (!user.passwordHash) {
-            return done(null, false, { message: 'This account uses Replit login. Please use "Log in with Replit".' });
+            return done(null, false, { message: 'Invalid account - no password set.' });
           }
 
           const isValidPassword = await bcrypt.compare(password, user.passwordHash);
@@ -61,44 +61,34 @@ export function configurePassport() {
     )
   );
 
-  // Unified serialization for both auth systems
+  // Serialization for form-based auth only
   passport.serializeUser((user: any, done) => {
-    if (user.claims) {
-      // Replit Auth user - store the full user object
-      done(null, { type: 'replit', data: user });
-    } else {
-      // Form-based user - store only the ID
-      done(null, { type: 'form', data: user.id });
-    }
+    // Form-based user - store only the ID
+    done(null, user.id);
   });
 
-  // Unified deserialization for both auth systems
-  passport.deserializeUser(async (serializedUser: any, done) => {
+  // Deserialization for form-based auth only
+  passport.deserializeUser(async (userId: any, done) => {
     try {
-      // Handle legacy session data that might not have the expected structure
-      if (!serializedUser || typeof serializedUser !== 'object') {
+      // Handle different session data formats
+      let actualUserId: number;
+      
+      if (typeof userId === 'object' && userId.type === 'form') {
+        // Legacy format: {type: 'form', data: userId}
+        actualUserId = userId.data;
+      } else if (typeof userId === 'number') {
+        // Direct user ID
+        actualUserId = userId;
+      } else if (typeof userId === 'string' && !isNaN(Number(userId))) {
+        // String user ID
+        actualUserId = Number(userId);
+      } else {
         console.warn('Invalid session data format, clearing session');
         return done(null, false);
       }
 
-      if (serializedUser.type === 'replit') {
-        // Replit Auth user - return the stored user object
-        done(null, serializedUser.data);
-      } else if (serializedUser.type === 'form') {
-        // Form-based user - fetch from database
-        const user = await storage.getUser(serializedUser.data);
-        done(null, user);
-      } else {
-        // Handle legacy session data - assume it's a user ID from old format
-        console.warn('Legacy session data detected, attempting to migrate');
-        if (typeof serializedUser === 'number' || (typeof serializedUser === 'string' && !isNaN(Number(serializedUser)))) {
-          const user = await storage.getUser(Number(serializedUser));
-          done(null, user);
-        } else {
-          console.warn('Unable to deserialize session, clearing');
-          done(null, false);
-        }
-      }
+      const user = await storage.getUser(actualUserId);
+      done(null, user);
     } catch (error) {
       console.error('Session deserialization error:', error);
       done(null, false); // Clear invalid session instead of throwing error

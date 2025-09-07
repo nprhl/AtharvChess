@@ -5,7 +5,6 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  replitUserId: text("replit_user_id").unique(), // External Replit OIDC user ID
   username: text("username"),
   email: text("email").notNull(),
   passwordHash: text("password_hash"),
@@ -58,8 +57,7 @@ export const userLessonProgress = pgTable("user_lesson_progress", {
   completedAt: timestamp("completed_at"),
 });
 
-// Session storage table.
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// Session storage table for authentication sessions.
 export const sessions = pgTable(
   "sessions",
   {

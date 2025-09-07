@@ -433,11 +433,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    // Since we removed Replit auth, upsert by email instead
     const [user] = await db
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.replitUserId,
+        target: users.email,
         set: userData,
       })
       .returning();
