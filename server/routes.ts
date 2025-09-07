@@ -2,8 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import passport from "passport";
 import { storage } from "./storage";
-import { setupAuth as setupReplitAuth, isAuthenticated } from "./replitAuth";
-import { configurePassport } from "./auth";
+import { configurePassport, setupAuth, requireAuth } from "./auth";
 import { puzzleService } from "./puzzle-service";
 import { tipService } from "./tip-service";
 import { gameIntegration } from "./game-integration";
@@ -32,33 +31,21 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup both authentication systems
-  await setupReplitAuth(app);
-  configurePassport();
+  // Setup form-based authentication
+  setupAuth(app);
   
   // Mount API routes
   app.use('/api/evals', evalRoutes);
   registerGameMoveRoutes(app);
 
-  // Auth user endpoint - works for both Replit Auth and form-based auth
+  // Auth user endpoint - form-based auth only
   app.get('/api/auth/user', async (req: any, res) => {
     try {
       if (!req.isAuthenticated()) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      let user;
-      if (req.user.claims) {
-        // Replit Auth user - get user by replitUserId  
-        const userRecord = await db.select().from(users).where(eq(users.replitUserId, req.user.claims.sub));
-        user = userRecord[0];
-      } else if (req.user.id) {
-        // Form-based auth user - get user by id
-        user = await storage.getUser(req.user.id);
-      } else {
-        return res.status(401).json({ message: "Invalid user session" });
-      }
-
+      const user = await storage.getUser(req.user.id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
