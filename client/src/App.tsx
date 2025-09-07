@@ -49,23 +49,6 @@ function Router() {
                 </p>
                 
                 <div className="space-y-4">
-                  {/* Replit Auth Option */}
-                  <a 
-                    href="/api/login"
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full"
-                  >
-                    Log in with Replit
-                  </a>
-                  
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">Or</span>
-                    </div>
-                  </div>
-                  
                   {/* Form-based Auth Options */}
                   <div className="grid grid-cols-2 gap-2">
                     <Link href="/login">
