@@ -28,6 +28,10 @@ import { pairingAlgorithms } from "./pairing-algorithms";
 import { roundManagement } from "./round-management";
 import { notificationService } from "./notification-service";
 import { GameStorageService } from "./game-storage";
+import { aiRecommendationEngine } from './ai-recommendation-engine';
+import { achievementEngine } from './achievement-engine';
+import { progressAnalytics } from './progress-analytics';
+import { userSkillAnalytics } from '@shared/schema';
 
 // Hash password helper function
 async function hashPassword(password: string): Promise<string> {
@@ -1781,6 +1785,129 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
       res.send(game.pgn || '');
     } catch (error) {
       console.error('Error exporting PGN:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // ==================== PROGRESS TRACKING ENDPOINTS ====================
+  
+  // Get user's personalized learning path and recommendations
+  app.get('/api/progress/learning-path', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const learningPath = await aiRecommendationEngine.generateLearningPath(userId);
+      
+      if (!learningPath) {
+        return res.status(404).json({ message: 'Unable to generate learning path' });
+      }
+
+      res.json(learningPath);
+    } catch (error) {
+      console.error('Error getting learning path:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get user's achievement progress
+  app.get('/api/progress/achievements', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const achievements = await achievementEngine.getUserAchievementProgress(userId);
+      res.json(achievements);
+    } catch (error) {
+      console.error('Error getting achievements:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Manually trigger game analysis (for admin/testing purposes)
+  app.post('/api/progress/analyze/:gameId', requireAuth, async (req: any, res) => {
+    try {
+      const { gameId } = req.params;
+      
+      if (!gameId || isNaN(parseInt(gameId))) {
+        return res.status(400).json({ message: 'Valid game ID required' });
+      }
+
+      const analysis = await progressAnalytics.analyzeCompleteGame(parseInt(gameId));
+      
+      if (!analysis) {
+        return res.status(404).json({ message: 'Game not found or analysis failed' });
+      }
+
+      res.json({
+        message: 'Game analysis completed',
+        analysis: {
+          gameId: analysis.gameId,
+          overallAccuracy: analysis.overallAccuracy,
+          phases: analysis.phases.length,
+          skillMetrics: analysis.skillMetrics,
+          improvementAreas: analysis.improvementAreas,
+          strengthAreas: analysis.strengthAreas
+        }
+      });
+    } catch (error) {
+      console.error('Error analyzing game:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get user's detailed skill analytics summary
+  app.get('/api/progress/skills', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      // Get skill analytics from database
+      const skillData = await db.select()
+        .from(userSkillAnalytics)
+        .where(eq(userSkillAnalytics.userId, userId))
+        .limit(1);
+
+      if (skillData.length === 0) {
+        return res.json({
+          message: 'No skill data available yet',
+          skillsAvailable: false
+        });
+      }
+
+      const skills = skillData[0];
+      res.json({
+        skillsAvailable: true,
+        overallRating: Math.round((skills.openingStrength + skills.middlegameStrength + skills.endgameStrength) / 3),
+        phaseRatings: {
+          opening: skills.openingStrength,
+          middlegame: skills.middlegameStrength,
+          endgame: skills.endgameStrength
+        },
+        specificSkills: {
+          tactical: skills.tacticalRating,
+          positional: skills.positionalRating,
+          calculation: skills.calculationRating,
+          timeManagement: parseFloat(skills.timeManagementScore) * 100
+        },
+        performance: {
+          averageAccuracy: parseFloat(skills.averageAccuracy) * 100,
+          blunderFrequency: parseFloat(skills.blunderFrequency),
+          consistencyScore: parseFloat(skills.consistencyScore) * 100,
+          improvementVelocity: parseFloat(skills.improvementVelocity),
+          recentForm: skills.recentForm,
+          gamesAnalyzed: skills.gamesAnalyzed
+        },
+        lastUpdated: skills.lastUpdated
+      });
+    } catch (error) {
+      console.error('Error getting skill analytics:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   });
