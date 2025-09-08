@@ -11,6 +11,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { StockfishAI } from "./stockfish-ai";
 import { OpenAIChessAI } from "./openai-chess-ai";
+import { enhancedChessAI } from "./enhanced-chess-ai";
 import type { Difficulty } from "./chess-ai";
 import { gameAnalyzer } from "./game-analyzer";
 import { MoveEvaluator } from "./move-evaluator";
@@ -616,54 +617,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI move endpoint with Ollama integration
+  // Enhanced AI move endpoint with MAIA-2 integration
   app.post("/api/ai/move", async (req, res) => {
     try {
-      const { fen, difficulty = 'beginner', useOllama = true } = req.body;
+      const { 
+        fen, 
+        difficulty = 'beginner', 
+        playerElo, 
+        opponentElo, 
+        gameHistory = [],
+        preferredEngine = null 
+      } = req.body;
       
       if (!fen) {
         return res.status(400).json({ message: "FEN string is required" });
       }
 
-      let bestMove = null;
-      let aiEngine = 'stockfish';
-
-      // Use Stockfish as the only chess engine
-      console.log(`Using Stockfish with difficulty: ${difficulty}`);
-      const stockfishAI = new StockfishAI(difficulty as Difficulty);
-      bestMove = await stockfishAI.getBestMove(fen);
+      console.log(`[Enhanced AI] Getting move with difficulty: ${difficulty}, engine: ${preferredEngine || 'auto'}`);
       
-      if (bestMove) {
-        aiEngine = 'stockfish';
-        console.log(`Stockfish (${difficulty}) played: ${bestMove.san}`);
-      } else {
-        console.log('Stockfish failed to generate move');
-      }
+      const moveResponse = await enhancedChessAI.getBestMove({
+        fen,
+        difficulty: difficulty as Difficulty,
+        playerElo,
+        opponentElo,
+        gameHistory,
+        preferredEngine,
+        enableFallback: true
+      });
       
-      if (!bestMove) {
-        return res.status(400).json({ message: "No valid moves available" });
+      if (!moveResponse.move) {
+        return res.status(400).json({ 
+          message: "No valid moves available",
+          metadata: moveResponse.metadata 
+        });
       }
 
-      // OpenAI analysis suspended - no move recording needed
+      console.log(`[Enhanced AI] ${moveResponse.engine} played: ${moveResponse.move.san} (confidence: ${moveResponse.confidence})`);
       
       res.json({
         move: {
-          from: bestMove.from,
-          to: bestMove.to,
-          promotion: bestMove.promotion || null
+          from: moveResponse.move.from,
+          to: moveResponse.move.to,
+          promotion: moveResponse.move.promotion || null
         },
-        san: bestMove.san,
+        san: moveResponse.move.san,
         difficulty,
-        engine: aiEngine
+        engine: moveResponse.engine,
+        confidence: moveResponse.confidence,
+        responseTime: moveResponse.responseTime,
+        fallbackUsed: moveResponse.fallbackUsed,
+        metadata: moveResponse.metadata
       });
     } catch (error) {
-      console.error('AI move error:', error);
+      console.error('[Enhanced AI] Move error:', error);
       res.status(500).json({ message: "AI service unavailable" });
     }
   });
 
-  // Educational AI hint endpoint with OpenAI integration for learning
+  // Educational AI hint endpoint with enhanced AI integration
   app.post("/api/ai/hint", async (req, res) => {
+    try {
+      const { fen, difficulty = 'intermediate', playerElo = 1200 } = req.body;
+      
+      if (!fen) {
+        return res.status(400).json({ message: "FEN string is required" });
+      }
+
+      console.log(`[Enhanced AI] Getting educational hint for difficulty: ${difficulty}`);
+      
+      const hint = await enhancedChessAI.getEducationalHint(fen, difficulty as Difficulty, playerElo);
+      
+      if (!hint) {
+        return res.status(503).json({ message: "Educational hint service temporarily unavailable" });
+      }
+
+      res.json(hint);
+    } catch (error) {
+      console.error('[Enhanced AI] Hint error:', error);
+      res.status(500).json({ message: "Hint service unavailable" });
+    }
+  });
+
+  // AI system status endpoint for monitoring
+  app.get("/api/ai/status", requireAuth, async (req, res) => {
+    try {
+      const status = enhancedChessAI.getSystemStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('[Enhanced AI] Status error:', error);
+      res.status(500).json({ message: "Status service unavailable" });
+    }
+  });
+
+  // AI engine testing endpoint (admin only)
+  app.post("/api/ai/test-engines", requireAuth, requirePermission(PERMISSIONS.ORG_MANAGE), async (req, res) => {
+    try {
+      const { fen } = req.body;
+      const testResults = await enhancedChessAI.testAllEngines(fen);
+      res.json(testResults);
+    } catch (error) {
+      console.error('[Enhanced AI] Test engines error:', error);
+      res.status(500).json({ message: "Engine testing service unavailable" });
+    }
+  });
+
+  // Original hint endpoint for compatibility
+  app.post("/api/ai/hint-legacy", async (req, res) => {
     try {
       const { fen, difficulty = 'beginner', moveHistory = [] } = req.body;
       
