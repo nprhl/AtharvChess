@@ -55,10 +55,18 @@ export default function SettingsPage() {
   // Password change mutation
   const changePasswordMutation = useMutation({
     mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
-      return apiRequest('/api/auth/change-password', {
+      const response = await fetch('/api/auth/change-password', {
         method: 'POST',
-        body: data
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to change password');
+      }
+      
+      return await response.json();
     },
     onSuccess: () => {
       toast({

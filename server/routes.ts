@@ -188,6 +188,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Forgot password route
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal if email exists or not for security
+        return res.json({ message: "If your email is registered, you will receive a password reset link." });
+      }
+
+      // Generate reset token (valid for 1 hour)
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+      // Store reset token in database (you'd need to add this to the user schema)
+      await storage.updateUser(user.id, { 
+        resetToken, 
+        resetTokenExpiry: resetExpiry 
+      });
+
+      // In a real app, you would send an email here
+      // For now, we'll just log the reset token
+      console.log(`Password reset requested for ${email}`);
+      console.log(`Reset token: ${resetToken}`);
+      console.log(`Reset link: ${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`);
+
+      res.json({ message: "If your email is registered, you will receive a password reset link." });
+    } catch (error) {
+      console.error("Error processing forgot password:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Reset password route
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: "Token and new password are required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters long" });
+      }
+
+      // Find user with valid reset token  
+      const allUsers = await storage.getAllUsers();
+      const user = allUsers.find((u: any) => 
+        u.resetToken === token && 
+        u.resetTokenExpiry && 
+        new Date(u.resetTokenExpiry) > new Date()
+      );
+
+      if (!user) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      // Hash new password
+      const newPasswordHash = await hashPassword(newPassword);
+      
+      // Update password and clear reset token
+      await storage.updateUser(user.id, { 
+        passwordHash: newPasswordHash,
+        resetToken: null,
+        resetTokenExpiry: null
+      });
+
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Unified logout route - works for both auth types
   app.post("/api/auth/logout", (req, res) => {
     req.logout((err) => {

@@ -18,6 +18,9 @@ export const users = pgTable("users", {
   currentStreak: integer("current_streak").notNull().default(0),
   lessonsCompleted: integer("lessons_completed").notNull().default(0),
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
+  // Password reset fields
+  resetToken: text("reset_token"),
+  resetTokenExpiry: timestamp("reset_token_expiry"),
   // Tournament-related fields
   dateOfBirth: timestamp("date_of_birth"),
   schoolId: integer("school_id"),
