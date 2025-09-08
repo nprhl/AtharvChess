@@ -241,8 +241,8 @@ export class EnhancedChessAI {
         continue;
       }
 
+      const engineStartTime = Date.now();
       try {
-        const engineStartTime = Date.now();
         let move: Move | null = null;
         let metadata: any = {};
 

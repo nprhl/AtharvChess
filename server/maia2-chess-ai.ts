@@ -76,6 +76,21 @@ export interface MAIA2Config {
   enableMetrics: boolean;
 }
 
+// Environment configuration helper
+export function getMaia2Config(): MAIA2Config {
+  return {
+    apiEndpoint: process.env.MAIA2_API_ENDPOINT || 'https://api.maia2.ai/v1',
+    apiKey: process.env.MAIA2_API_KEY || '',
+    timeout: parseInt(process.env.MAIA2_TIMEOUT || '10000'),
+    maxRetries: parseInt(process.env.MAIA2_MAX_RETRIES || '3'),
+    rateLimitPerMinute: parseInt(process.env.MAIA2_RATE_LIMIT || '60'),
+    enableCaching: process.env.MAIA2_ENABLE_CACHE !== 'false',
+    cacheExpiryMinutes: parseInt(process.env.MAIA2_CACHE_EXPIRY || '30'),
+    fallbackToStockfish: process.env.MAIA2_FALLBACK !== 'false',
+    enableMetrics: process.env.MAIA2_ENABLE_METRICS !== 'false'
+  };
+}
+
 export class MAIA2ChessAI {
   private config: MAIA2Config;
   private axiosInstance: AxiosInstance;
