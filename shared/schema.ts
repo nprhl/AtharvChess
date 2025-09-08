@@ -57,15 +57,26 @@ export const userLessonProgress = pgTable("user_lesson_progress", {
   completedAt: timestamp("completed_at"),
 });
 
-// Session storage table for authentication sessions.
+// Enhanced session storage table for secure authentication sessions
 export const sessions = pgTable(
   "sessions",
   {
-    sid: varchar("sid").primaryKey(),
+    sid: varchar("sid").primaryKey(), // Keep original type to avoid data loss
     sess: jsonb("sess").notNull(),
     expire: timestamp("expire").notNull(),
+    userId: integer("user_id").references(() => users.id), // Track session ownership
+    ipAddress: varchar("ip_address", { length: 45 }), // IPv4/IPv6
+    userAgent: text("user_agent"), // Browser/device identification
+    isRevoked: boolean("is_revoked").notNull().default(false), // Manual revocation
+    lastActivity: timestamp("last_activity").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (table) => [index("IDX_session_expire").on(table.expire)],
+  (table) => [
+    index("IDX_session_expire").on(table.expire),
+    index("IDX_session_user_id").on(table.userId),
+    index("IDX_session_last_activity").on(table.lastActivity),
+    index("IDX_session_revoked").on(table.isRevoked),
+  ],
 );
 
 // Chess puzzles for ELO assessment
@@ -182,27 +193,9 @@ export const userTipProgress = pgTable("user_tip_progress", {
   completedAt: timestamp("completed_at"),
 });
 
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
-export type UpsertUser = typeof users.$inferInsert;
-
-export type Game = typeof games.$inferSelect;
-export type InsertGame = typeof games.$inferInsert;
-
-export type Lesson = typeof lessons.$inferSelect;
-export type InsertLesson = typeof lessons.$inferInsert;
-
-export type UserLessonProgress = typeof userLessonProgress.$inferSelect;
-export type InsertUserLessonProgress = typeof userLessonProgress.$inferInsert;
-
-export type Settings = typeof settings.$inferSelect;
-export type InsertSettings = typeof settings.$inferInsert;
-
-export type Puzzle = typeof puzzles.$inferSelect;
-export type InsertPuzzle = typeof puzzles.$inferInsert;
-
-export type PuzzleAttempt = typeof puzzleAttempts.$inferSelect;
-export type InsertPuzzleAttempt = typeof puzzleAttempts.$inferInsert;
+// Session type
+export type Session = typeof sessions.$inferSelect;
+export type InsertSession = typeof sessions.$inferInsert;
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
