@@ -104,22 +104,41 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
   };
 
   const hasRole = (role: string, scope?: string): boolean => {
-    if (!permissions?.roles) return false;
-    return permissions.roles.some(userRole => {
-      if (userRole.role !== role) return false;
-      if (scope && userRole.scope !== scope) return false;
-      
-      // Check if role is expired
-      if (userRole.expiresAt) {
-        const expiry = new Date(userRole.expiresAt);
-        if (expiry < new Date()) return false;
+    if (!permissions?.roles) {
+      console.log('[PermissionContext] No roles available');
+      return false;
+    }
+    
+    // Handle both array of role objects and array of role strings
+    const hasRoleInArray = permissions.roles.some(userRole => {
+      // If userRole is a string, compare directly
+      if (typeof userRole === 'string') {
+        return userRole === role;
       }
       
-      return true;
+      // If userRole is an object, check the role property
+      if (typeof userRole === 'object' && userRole.role) {
+        if (userRole.role !== role) return false;
+        if (scope && userRole.scope !== scope) return false;
+        
+        // Check if role is expired
+        if (userRole.expiresAt) {
+          const expiry = new Date(userRole.expiresAt);
+          if (expiry < new Date()) return false;
+        }
+        
+        return true;
+      }
+      
+      return false;
     });
+    
+    console.log(`[PermissionContext] Checking role '${role}':`, hasRoleInArray);
+    return hasRoleInArray;
   };
 
   const hasAnyRole = (roles: string[]): boolean => {
+    console.log('[PermissionContext] Checking roles:', roles, 'against user roles:', permissions?.roles);
     return roles.some(role => hasRole(role));
   };
 
@@ -303,7 +322,8 @@ export const useNavigationItems = () => {
         const hasAnyRequiredRole = item.anyOf.roles 
           ? permissions.hasAnyRole(item.anyOf.roles) 
           : true;
-        hasAccess = hasAnyRequiredPermission && hasAnyRequiredRole;
+        // For anyOf, user needs ANY of the required permissions OR roles (not both)
+        hasAccess = hasAnyRequiredPermission || hasAnyRequiredRole;
       }
 
       return hasAccess;

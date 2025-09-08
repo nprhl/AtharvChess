@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Link } from "wouter";
-import { Gamepad2, BookOpen, Lightbulb, BarChart3, Settings, Trophy, Users, Globe, LucideIcon } from "lucide-react";
+import { Gamepad2, BookOpen, Lightbulb, BarChart3, Settings, Trophy, Users, Globe, type LucideIcon } from "lucide-react";
 import { useNavigationItems, ROLES, PERMISSIONS } from "@/contexts/PermissionContext";
 
 interface NavItem {
@@ -86,7 +86,8 @@ export default function BottomNavigation() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-2 py-2 z-50">
       <div className="flex items-center justify-around">
-        {visibleNavItems.map(({ path, icon: Icon, label }) => {
+        {visibleNavItems.map((item) => {
+          const { path, icon: IconComponent, label } = item;
           const isActive = location === path || 
             (path === "/tournaments" && location.startsWith("/tournaments")) ||
             (path === "/organizations" && location.startsWith("/organizations"));
@@ -96,7 +97,7 @@ export default function BottomNavigation() {
               <button className={`flex flex-col items-center py-2 px-2 rounded-lg transition-colors ${
                 isActive ? 'nav-tab active' : 'nav-tab'
               }`}>
-                <Icon className={`text-lg mb-1 ${
+                <IconComponent className={`text-lg mb-1 ${
                   isActive ? 'text-blue-400' : 'text-muted-foreground'
                 }`} size={20} />
                 <span className={`text-xs ${
