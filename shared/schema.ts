@@ -179,6 +179,122 @@ export const skillProgress = pgTable("skill_progress", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Comprehensive user skill analytics with detailed phase tracking
+export const userSkillAnalytics = pgTable("user_skill_analytics", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  // Game phase strengths (0-3000 rating scale)
+  openingStrength: integer("opening_strength").notNull().default(1200),
+  middlegameStrength: integer("middlegame_strength").notNull().default(1200),
+  endgameStrength: integer("endgame_strength").notNull().default(1200),
+  // Specific skill ratings
+  tacticalRating: integer("tactical_rating").notNull().default(1200),
+  positionalRating: integer("positional_rating").notNull().default(1200),
+  calculationRating: integer("calculation_rating").notNull().default(1200),
+  timeManagementScore: decimal("time_management_score", { precision: 5, scale: 2 }).notNull().default('0.75'),
+  // Performance metrics
+  blunderFrequency: decimal("blunder_frequency", { precision: 5, scale: 2 }).notNull().default('0.05'), // blunders per game
+  averageAccuracy: decimal("average_accuracy", { precision: 5, scale: 2 }).notNull().default('0.80'),
+  consistencyScore: decimal("consistency_score", { precision: 5, scale: 2 }).notNull().default('0.70'),
+  improvementVelocity: decimal("improvement_velocity", { precision: 5, scale: 2 }).notNull().default('0.00'), // rating change per week
+  // Trend analysis
+  recentForm: text("recent_form").notNull().default('stable'), // 'improving', 'stable', 'declining'
+  peakPerformance: integer("peak_performance").notNull().default(1200),
+  gamesAnalyzed: integer("games_analyzed").notNull().default(0),
+  lastUpdated: timestamp("last_updated").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_user_skill_analytics_user_id").on(table.userId),
+  index("idx_user_skill_analytics_updated").on(table.lastUpdated),
+]);
+
+// Achievement system for user motivation and progress tracking
+export const achievements = pgTable("achievements", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(), // 'milestone', 'skill', 'consistency', 'learning', 'special'
+  type: text("type").notNull(), // 'first_win', 'games_played', 'elo_milestone', 'tactical_master', etc.
+  requirement: jsonb("requirement").notNull(), // Flexible requirement definition
+  points: integer("points").notNull().default(10), // Achievement points for gamification
+  iconUrl: text("icon_url"),
+  rarity: text("rarity").notNull().default('common'), // 'common', 'rare', 'epic', 'legendary'
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// User achievement progress and unlocks
+export const userAchievements = pgTable("user_achievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  achievementId: integer("achievement_id").references(() => achievements.id),
+  progress: decimal("progress", { precision: 5, scale: 2 }).notNull().default('0.00'), // 0.00 to 1.00
+  isUnlocked: boolean("is_unlocked").notNull().default(false),
+  unlockedAt: timestamp("unlocked_at"),
+  currentValue: integer("current_value").notNull().default(0), // Current progress value
+  targetValue: integer("target_value").notNull(), // Target value to unlock
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_user_achievements_user_id").on(table.userId),
+  index("idx_user_achievements_unlocked").on(table.isUnlocked),
+]);
+
+// Opening repertoire performance tracking
+export const openingPerformance = pgTable("opening_performance", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  openingEco: text("opening_eco").notNull(), // ECO code (e.g., "B20", "E90")
+  openingName: text("opening_name").notNull(),
+  colorPlayed: text("color_played").notNull(), // 'white' or 'black'
+  gamesPlayed: integer("games_played").notNull().default(0),
+  wins: integer("wins").notNull().default(0),
+  losses: integer("losses").notNull().default(0),
+  draws: integer("draws").notNull().default(0),
+  winRate: decimal("win_rate", { precision: 5, scale: 2 }).notNull().default('0.00'),
+  averageAccuracy: decimal("average_accuracy", { precision: 5, scale: 2 }).notNull().default('0.00'),
+  comfortLevel: integer("comfort_level").notNull().default(1), // 1-10 scale
+  lastPlayed: timestamp("last_played"),
+  // Opening specific metrics
+  theoryKnowledge: integer("theory_knowledge").notNull().default(1), // 1-10 scale
+  typicalMistakes: text("typical_mistakes").array(),
+  strongVariations: text("strong_variations").array(),
+  needsPractice: boolean("needs_practice").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_opening_performance_user_id").on(table.userId),
+  index("idx_opening_performance_eco").on(table.openingEco),
+  index("idx_opening_performance_updated").on(table.updatedAt),
+]);
+
+// Game phase analysis for detailed progress tracking
+export const gamePhaseAnalysis = pgTable("game_phase_analysis", {
+  id: serial("id").primaryKey(),
+  gameId: integer("game_id").references(() => games.id),
+  userId: integer("user_id").references(() => users.id),
+  // Phase boundaries (move numbers)
+  openingEnd: integer("opening_end").notNull().default(12),
+  middlegameEnd: integer("middlegame_end").notNull().default(35),
+  // Phase performance metrics
+  openingAccuracy: decimal("opening_accuracy", { precision: 5, scale: 2 }),
+  middlegameAccuracy: decimal("middlegame_accuracy", { precision: 5, scale: 2 }),
+  endgameAccuracy: decimal("endgame_accuracy", { precision: 5, scale: 2 }),
+  // Phase-specific insights
+  openingBlunders: integer("opening_blunders").notNull().default(0),
+  middlegameBlunders: integer("middlegame_blunders").notNull().default(0),
+  endgameBlunders: integer("endgame_blunders").notNull().default(0),
+  timeSpentOpening: integer("time_spent_opening").notNull().default(0), // seconds
+  timeSpentMiddlegame: integer("time_spent_middlegame").notNull().default(0),
+  timeSpentEndgame: integer("time_spent_endgame").notNull().default(0),
+  // Key moments and patterns
+  turningPoint: integer("turning_point"), // Move number where game was decided
+  phaseDominance: text("phase_dominance"), // 'opening', 'middlegame', 'endgame'
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_game_phase_analysis_game_id").on(table.gameId),
+  index("idx_game_phase_analysis_user_id").on(table.userId),
+]);
+
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
@@ -270,6 +386,47 @@ export const insertUserTipProgressSchema = createInsertSchema(userTipProgress).o
   viewedAt: true,
   completedAt: true,
 });
+
+// New progress tracking schemas
+export const insertUserSkillAnalyticsSchema = createInsertSchema(userSkillAnalytics).omit({
+  id: true,
+  createdAt: true,
+  lastUpdated: true,
+});
+
+export const insertAchievementSchema = createInsertSchema(achievements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserAchievementSchema = createInsertSchema(userAchievements).omit({
+  id: true,
+  createdAt: true,
+  unlockedAt: true,
+});
+
+export const insertOpeningPerformanceSchema = createInsertSchema(openingPerformance).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGamePhaseAnalysisSchema = createInsertSchema(gamePhaseAnalysis).omit({
+  id: true,
+  createdAt: true,
+});
+
+// TypeScript types for new tables
+export type UserSkillAnalytics = typeof userSkillAnalytics.$inferSelect;
+export type InsertUserSkillAnalytics = typeof userSkillAnalytics.$inferInsert;
+export type Achievement = typeof achievements.$inferSelect;
+export type InsertAchievement = typeof achievements.$inferInsert;
+export type UserAchievement = typeof userAchievements.$inferSelect;
+export type InsertUserAchievement = typeof userAchievements.$inferInsert;
+export type OpeningPerformance = typeof openingPerformance.$inferSelect;
+export type InsertOpeningPerformance = typeof openingPerformance.$inferInsert;
+export type GamePhaseAnalysis = typeof gamePhaseAnalysis.$inferSelect;
+export type InsertGamePhaseAnalysis = typeof gamePhaseAnalysis.$inferInsert;
 
 // Authentication schemas
 export const loginSchema = z.object({
