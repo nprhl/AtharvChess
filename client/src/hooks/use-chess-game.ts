@@ -69,6 +69,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
   // Initialize game start time when first move is made
   useEffect(() => {
     if (gameEngine.history.length > 0 && !gameHasStarted) {
+      console.log('[GameHistory] Game started! Setting start time and flags');
       setGameStartTime(new Date());
       setGameHasStarted(true);
       setGameHasEnded(false);
@@ -77,9 +78,23 @@ export function useChessGame(options: UseChessGameOptions = {}) {
 
   // Detect game completion and save to database
   useEffect(() => {
+    console.log('[GameHistory] Game state check:', {
+      gameHasStarted,
+      gameHasEnded,
+      isGameOver: gameEngine.isGameOver(),
+      movesCount: gameEngine.history.length,
+      userId: user?.id,
+      hasGameStartTime: !!gameStartTime
+    });
+
     if (gameHasStarted && !gameHasEnded && gameEngine.isGameOver()) {
       const saveGameToDatabase = async () => {
-        if (!user?.id || !gameStartTime) return;
+        console.log('[GameHistory] Attempting to save game...');
+        
+        if (!user?.id || !gameStartTime) {
+          console.log('[GameHistory] Cannot save game - missing user ID or start time:', { userId: user?.id, hasStartTime: !!gameStartTime });
+          return;
+        }
 
         try {
           // Determine result from player's perspective
@@ -87,14 +102,17 @@ export function useChessGame(options: UseChessGameOptions = {}) {
           
           if (gameEngine.isDraw()) {
             result = 'draw';
+            console.log('[GameHistory] Game ended in draw');
           } else if (gameEngine.isCheckmate()) {
             // If it's checkmate, determine who won
             const currentTurn = gameEngine.turn;
             const playerIsWhite = currentPlayerColor === 'w';
             const playerWon = (currentTurn === 'b' && playerIsWhite) || (currentTurn === 'w' && !playerIsWhite);
             result = playerWon ? 'win' : 'loss';
+            console.log('[GameHistory] Game ended in checkmate:', { result, currentTurn, playerIsWhite });
           } else {
             result = 'draw'; // Other game-ending conditions (stalemate, etc.)
+            console.log('[GameHistory] Game ended by other condition (stalemate, etc.)');
           }
 
           const gameEndTime = new Date();
@@ -111,18 +129,31 @@ export function useChessGame(options: UseChessGameOptions = {}) {
             gameDurationSeconds
           };
 
-          await fetch('/api/games/save', {
+          console.log('[GameHistory] Sending game data to server:', {
+            moves: gameData.moves.length,
+            result: gameData.result,
+            duration: gameData.gameDurationSeconds
+          });
+
+          const response = await fetch('/api/games/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(gameData)
           });
 
-          console.log('[GameHistory] Game saved to database:', { result, moves: gameData.moves.length });
+          if (response.ok) {
+            const responseData = await response.json();
+            console.log('[GameHistory] Game saved successfully:', responseData);
+          } else {
+            const errorText = await response.text();
+            console.error('[GameHistory] Failed to save game - server error:', response.status, errorText);
+          }
         } catch (error) {
-          console.error('[GameHistory] Failed to save game:', error);
+          console.error('[GameHistory] Failed to save game - network/client error:', error);
         }
       };
 
+      console.log('[GameHistory] Game over detected! Saving game...');
       setGameHasEnded(true);
       saveGameToDatabase();
     }
@@ -179,15 +210,74 @@ export function useChessGame(options: UseChessGameOptions = {}) {
           saveGameState();
           return true;
         }
+      } else {
+        // AI failed to generate move - save game as abandoned
+        console.log('[GameHistory] AI failed to generate move, ending game as abandoned');
+        handleAIFailure();
       }
     } catch (error) {
       console.error('Failed to get computer move:', error);
+      // AI failed to generate move - save game as abandoned
+      handleAIFailure();
     } finally {
       setIsComputerThinking(false);
     }
     
     return false;
   }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentDifficulty, currentPlayerColor, isComputerThinking]);
+
+  // Handle AI failure by saving the game as abandoned
+  const handleAIFailure = useCallback(() => {
+    if (!gameHasStarted || gameHasEnded) return;
+
+    console.log('[GameHistory] Handling AI failure - saving game as abandoned');
+    const saveAbandonedGame = async () => {
+      if (!user?.id || !gameStartTime) {
+        console.log('[GameHistory] Cannot save abandoned game - missing user ID or start time');
+        return;
+      }
+
+      try {
+        const gameEndTime = new Date();
+        const gameDurationSeconds = Math.floor((gameEndTime.getTime() - gameStartTime.getTime()) / 1000);
+        
+        const gameData = {
+          opponent: 'Computer',
+          result: 'abandoned' as const,
+          moves: gameEngine.history.map(move => move.san),
+          gameMode: currentGameMode,
+          difficulty: currentDifficulty,
+          playerColor: currentPlayerColor === 'w' ? 'white' : 'black',
+          timeControl: undefined,
+          gameDurationSeconds
+        };
+
+        console.log('[GameHistory] Saving abandoned game due to AI failure:', {
+          moves: gameData.moves.length,
+          duration: gameData.gameDurationSeconds
+        });
+
+        const response = await fetch('/api/games/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(gameData)
+        });
+
+        if (response.ok) {
+          const responseData = await response.json();
+          console.log('[GameHistory] Abandoned game saved successfully:', responseData);
+        } else {
+          const errorText = await response.text();
+          console.error('[GameHistory] Failed to save abandoned game:', response.status, errorText);
+        }
+      } catch (error) {
+        console.error('[GameHistory] Error saving abandoned game:', error);
+      }
+    };
+
+    setGameHasEnded(true);
+    saveAbandonedGame();
+  }, [gameHasStarted, gameHasEnded, user?.id, gameStartTime, gameEngine, currentGameMode, currentDifficulty, currentPlayerColor]);
 
   // Auto-make computer move when player chooses black (computer plays first as white)
   useEffect(() => {
@@ -326,6 +416,13 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     // Move evaluation removed - now handled by Stockfish
     promotionPending,
     handlePromotion,
-    cancelPromotion
+    cancelPromotion,
+    // Manual game saving function for debugging
+    saveGameManually: () => {
+      if (gameHasStarted && !gameHasEnded && gameEngine.history.length > 0) {
+        console.log('[GameHistory] Manual save triggered');
+        handleAIFailure(); // Use the abandonment logic for manual saves
+      }
+    }
   };
 }
