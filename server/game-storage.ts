@@ -1,6 +1,8 @@
 import { storage } from './storage';
 import { Chess } from 'chess.js';
 import type { InsertGame } from '@shared/schema';
+import { progressAnalytics } from './progress-analytics';
+import { achievementEngine } from './achievement-engine';
 
 export interface GameSaveData {
   userId: number;
@@ -61,6 +63,12 @@ export class GameStorageService {
 
       const savedGame = await storage.createGame(gameRecord);
       console.log('[GameStorage] Game saved successfully:', savedGame.id);
+      
+      // Trigger automatic progress analysis and achievement checking (async, non-blocking)
+      this.triggerProgressAnalysis(savedGame.id, gameData).catch(error => {
+        console.error('[GameStorage] Progress analysis failed:', error);
+      });
+      
       return savedGame.id;
     } catch (error) {
       console.error('[GameStorage] Error saving game:', error);
@@ -155,5 +163,40 @@ export class GameStorageService {
     }
 
     return { name: 'Unknown Opening', eco: 'A00' };
+  }
+
+  /**
+   * Trigger automatic progress analysis and achievement checking
+   */
+  private static async triggerProgressAnalysis(gameId: number, gameData: GameSaveData): Promise<void> {
+    try {
+      console.log(`[GameStorage] Starting progress analysis for game ${gameId}`);
+      
+      // Perform comprehensive game analysis
+      const analysis = await progressAnalytics.analyzeCompleteGame(gameId);
+      
+      if (analysis) {
+        // Check for achievement unlocks
+        const achievements = await achievementEngine.checkGameAchievements(
+          gameData.userId, 
+          analysis, 
+          gameData.result
+        );
+        
+        if (achievements.length > 0) {
+          console.log(`[GameStorage] User ${gameData.userId} unlocked ${achievements.length} achievements:`, 
+            achievements.map(a => a.name).join(', '));
+          
+          // Note: Achievement notifications would be handled by the frontend
+          // when it queries the user's achievement progress
+        }
+        
+        console.log(`[GameStorage] Progress analysis completed for game ${gameId}`);
+      }
+      
+    } catch (error) {
+      console.error(`[GameStorage] Error in progress analysis for game ${gameId}:`, error);
+      // Don't throw - we don't want progress analysis failures to break game saving
+    }
   }
 }
