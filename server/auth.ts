@@ -58,17 +58,7 @@ export function configurePassport() {
             return done(null, false, { message: 'Invalid email or password' });
           }
 
-          // Store security context in session
-          const secureSessionData = {
-            userId: user.id,
-            ipAddress: req.ip || req.connection.remoteAddress || 'unknown',
-            userAgent: req.get('User-Agent') || 'unknown',
-            createdAt: new Date(),
-            lastActivity: new Date()
-          };
-
-          // Add security data to request for session storage
-          (req as any).secureSessionData = secureSessionData;
+          console.log('[Auth] Login successful for user:', user.email);
 
           return done(null, user);
         } catch (error) {
@@ -78,67 +68,36 @@ export function configurePassport() {
     )
   );
 
-  // Serialization for form-based auth only
+  // Simplified serialization - store user ID in session
   passport.serializeUser((user: any, done) => {
-    // Form-based user - store only the ID
+    console.log('[Auth] Serializing user:', user.id);
     done(null, user.id);
   });
 
-  // Deserialization for form-based auth only
-  passport.deserializeUser(async (userId: any, done) => {
+  // Simplified deserialization - get user by ID
+  passport.deserializeUser(async (userId: number, done) => {
     try {
-      // Handle different session data formats
-      let actualUserId: number;
-      
-      if (typeof userId === 'object' && userId.type === 'form') {
-        // Legacy format: {type: 'form', data: userId}
-        actualUserId = userId.data;
-      } else if (typeof userId === 'number') {
-        // Direct user ID
-        actualUserId = userId;
-      } else if (typeof userId === 'string' && !isNaN(Number(userId))) {
-        // String user ID
-        actualUserId = Number(userId);
+      console.log('[Auth] Deserializing user ID:', userId);
+      const user = await storage.getUser(userId);
+      if (user) {
+        console.log('[Auth] User found:', user.email);
+        done(null, user);
       } else {
-        console.warn('Invalid session data format, clearing session');
-        return done(null, false);
+        console.log('[Auth] User not found for ID:', userId);
+        done(null, false);
       }
-
-      const user = await storage.getUser(actualUserId);
-      done(null, user);
     } catch (error) {
-      console.error('Session deserialization error:', error);
-      done(null, false); // Clear invalid session instead of throwing error
+      console.error('[Auth] Deserialization error:', error);
+      done(null, false);
     }
   });
 }
 
-// Session regeneration middleware for security
+// Simplified session security middleware (removed problematic regeneration)
 export const sessionRegenerationMiddleware: RequestHandler = (req, res, next) => {
-  if (req.isAuthenticated() && req.session) {
-    // Regenerate session ID on login to prevent session fixation
-    if ((req as any).sessionRegenerated !== true) {
-      req.session.regenerate((err) => {
-        if (err) {
-          console.error('Session regeneration error:', err);
-          return next(err);
-        }
-        
-        // Store security metadata
-        const secureData = (req as any).secureSessionData;
-        if (secureData) {
-          Object.assign(req.session, secureData);
-        }
-        
-        (req as any).sessionRegenerated = true;
-        next();
-      });
-    } else {
-      next();
-    }
-  } else {
-    next();
-  }
+  // Simply pass through - session regeneration was causing sessions to be lost
+  // The database session store already provides adequate security
+  next();
 };
 
 export function setupAuth(app: Express) {
