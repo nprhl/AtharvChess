@@ -4,6 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { PermissionProvider } from "@/contexts/PermissionContext";
 import { useAuth } from "@/hooks/useAuth";
 import GamePage from "@/pages/game";
 import LessonsPage from "@/pages/lessons";
@@ -105,17 +106,19 @@ function Router() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
         <TooltipProvider>
-          <Router />
-          <Toaster />
+          <PermissionProvider>
+            <div className="min-h-screen bg-background text-foreground">
+              <Router />
+              <Toaster />
+            </div>
+          </PermissionProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
 }
-
-export default App;

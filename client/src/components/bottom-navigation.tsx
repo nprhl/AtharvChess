@@ -1,25 +1,85 @@
 import { useLocation } from "wouter";
 import { Link } from "wouter";
-import { Gamepad2, BookOpen, Lightbulb, BarChart3, Settings, Trophy } from "lucide-react";
-import { useHasAnyRole } from "@/hooks/usePermissions";
+import { Gamepad2, BookOpen, Lightbulb, BarChart3, Settings, Trophy, Users, Globe } from "lucide-react";
+import { useNavigationItems, ROLES, PERMISSIONS } from "@/contexts/PermissionContext";
 
-const navItems = [
-  { path: "/", icon: Gamepad2, label: "Play" },
-  { path: "/lessons", icon: BookOpen, label: "Lessons" },
-  { path: "/tips", icon: Lightbulb, label: "Tips" },
-  { path: "/tournaments", icon: Trophy, label: "Tournaments" },
-  { path: "/progress", icon: BarChart3, label: "Progress" },
-  { path: "/settings", icon: Settings, label: "Settings" }
+const allNavItems = [
+  { 
+    id: "play", 
+    path: "/", 
+    icon: Gamepad2, 
+    label: "Play" 
+  },
+  { 
+    id: "lessons", 
+    path: "/lessons", 
+    icon: BookOpen, 
+    label: "Lessons" 
+  },
+  { 
+    id: "tips", 
+    path: "/tips", 
+    icon: Lightbulb, 
+    label: "Tips" 
+  },
+  { 
+    id: "tournaments", 
+    path: "/tournaments", 
+    icon: Trophy, 
+    label: "Tournaments",
+    anyOf: {
+      roles: [ROLES.STUDENT, ROLES.TEACHER, ROLES.COACH, ROLES.ORGANIZER, ROLES.SUPER_ADMIN]
+    }
+  },
+  { 
+    id: "organizations", 
+    path: "/organizations", 
+    icon: Globe, 
+    label: "Orgs",
+    anyOf: {
+      roles: [ROLES.TEACHER, ROLES.COACH, ROLES.ORGANIZER, ROLES.SUPER_ADMIN],
+      permissions: [PERMISSIONS.ORG_MANAGE, PERMISSIONS.ORG_VIEW_MEMBERS]
+    }
+  },
+  { 
+    id: "progress", 
+    path: "/progress", 
+    icon: BarChart3, 
+    label: "Progress" 
+  },
+  { 
+    id: "settings", 
+    path: "/settings", 
+    icon: Settings, 
+    label: "Settings" 
+  }
 ];
 
 export default function BottomNavigation() {
   const [location] = useLocation();
+  const { getVisibleItems, isLoading } = useNavigationItems();
+
+  const visibleNavItems = getVisibleItems(allNavItems);
+
+  if (isLoading) {
+    return (
+      <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-2 py-2 z-50">
+        <div className="flex items-center justify-around">
+          <div className="animate-pulse h-12 w-12 bg-muted rounded-lg"></div>
+          <div className="animate-pulse h-12 w-12 bg-muted rounded-lg"></div>
+          <div className="animate-pulse h-12 w-12 bg-muted rounded-lg"></div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-2 py-2 z-50">
       <div className="flex items-center justify-around">
-        {navItems.map(({ path, icon: Icon, label }) => {
-          const isActive = location === path || (path === "/tournaments" && location.startsWith("/tournaments"));
+        {visibleNavItems.map(({ path, icon: Icon, label }) => {
+          const isActive = location === path || 
+            (path === "/tournaments" && location.startsWith("/tournaments")) ||
+            (path === "/organizations" && location.startsWith("/organizations"));
           
           return (
             <Link key={path} href={path}>
