@@ -2,11 +2,15 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, GraduationCap, Clock, TrendingUp, RotateCcw, Palette, Gamepad2, LogOut } from "lucide-react";
+import { Shield, GraduationCap, Clock, TrendingUp, RotateCcw, Palette, Gamepad2, LogOut, Lock, Eye, EyeOff } from "lucide-react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/components/theme-provider";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import TTSControls from '@/components/tts-controls';
 
 interface Settings {
@@ -34,6 +38,48 @@ export default function SettingsPage() {
     autoAdjustDifficulty: true,
     gameMode: 'pvc',
     aiDifficulty: 'beginner'
+  });
+
+  // Password change state
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+
+  // Password change mutation
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      return apiRequest('/api/auth/change-password', {
+        method: 'POST',
+        body: data
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password updated",
+        description: "Your password has been changed successfully",
+        duration: 3000
+      });
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update password",
+        variant: "destructive",
+        duration: 4000
+      });
+    }
   });
 
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
@@ -65,6 +111,49 @@ export default function SettingsPage() {
 
   const handleLogout = () => {
     window.location.href = '/api/logout';
+  };
+
+  const handlePasswordChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Please fill in all password fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New passwords do not match",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "New password must be at least 6 characters long",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    changePasswordMutation.mutate({
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword
+    });
+  };
+
+  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
   };
 
   return (
@@ -284,6 +373,113 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Password Change */}
+      <Card className="bg-card border-border">
+        <CardContent className="p-4">
+          <h3 className="font-semibold mb-3 flex items-center text-card-foreground">
+            <Lock className="w-5 h-5 mr-2 text-red-400" />
+            Change Password
+          </h3>
+          
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword" className="text-sm font-medium text-card-foreground">
+                Current Password
+              </Label>
+              <div className="relative">
+                <Input
+                  id="currentPassword"
+                  type={showPasswords.current ? "text" : "password"}
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  className="pr-10 bg-background border-border"
+                  placeholder="Enter current password"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => togglePasswordVisibility('current')}
+                >
+                  {showPasswords.current ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="newPassword" className="text-sm font-medium text-card-foreground">
+                New Password
+              </Label>
+              <div className="relative">
+                <Input
+                  id="newPassword"
+                  type={showPasswords.new ? "text" : "password"}
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                  className="pr-10 bg-background border-border"
+                  placeholder="Enter new password (min 6 characters)"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => togglePasswordVisibility('new')}
+                >
+                  {showPasswords.new ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-sm font-medium text-card-foreground">
+                Confirm New Password
+              </Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showPasswords.confirm ? "text" : "password"}
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="pr-10 bg-background border-border"
+                  placeholder="Confirm new password"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => togglePasswordVisibility('confirm')}
+                >
+                  {showPasswords.confirm ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <Button 
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
+              disabled={changePasswordMutation.isPending}
+            >
+              {changePasswordMutation.isPending ? "Updating..." : "Update Password"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
 
