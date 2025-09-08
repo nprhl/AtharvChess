@@ -27,6 +27,7 @@ import { registrationService } from "./tournament-registration";
 import { pairingAlgorithms } from "./pairing-algorithms";
 import { roundManagement } from "./round-management";
 import { notificationService } from "./notification-service";
+import { GameStorageService } from "./game-storage";
 
 // Hash password helper function
 async function hashPassword(password: string): Promise<string> {
@@ -1656,6 +1657,131 @@ Explain in 2 short sentences and give 1 tip. No new variations.`;
     } catch (error) {
       console.error("Error fetching standings:", error);
       res.status(500).json({ error: "Failed to fetch standings" });
+    }
+  });
+
+  // Game History API endpoints
+  app.get('/api/games/history', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      const { 
+        page = 1, 
+        limit = 20, 
+        result, 
+        gameMode, 
+        dateFrom, 
+        dateTo 
+      } = req.query;
+
+      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+      
+      const filters: any = {
+        limit: parseInt(limit as string),
+        offset: offset
+      };
+
+      if (result) filters.result = result;
+      if (gameMode) filters.gameMode = gameMode;
+      if (dateFrom) filters.dateFrom = new Date(dateFrom as string);
+      if (dateTo) filters.dateTo = new Date(dateTo as string);
+
+      const games = await storage.getGamesByUserIdWithFilters(userId, filters);
+      const totalGames = await storage.getGamesByUserId(userId);
+
+      res.json({
+        games,
+        pagination: {
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          total: totalGames.length,
+          totalPages: Math.ceil(totalGames.length / parseInt(limit as string))
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching game history:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/games/:id/replay', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const gameId = parseInt(req.params.id);
+
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      const game = await storage.getGameById(gameId);
+      if (!game) {
+        return res.status(404).json({ message: 'Game not found' });
+      }
+
+      // Check if user owns this game
+      if (game.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      res.json(game);
+    } catch (error) {
+      console.error('Error fetching game for replay:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/games/save', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      const gameData = req.body;
+      const gameId = await GameStorageService.saveCompletedGame({
+        userId,
+        ...gameData
+      });
+
+      if (gameId) {
+        res.json({ success: true, gameId });
+      } else {
+        res.status(500).json({ message: 'Failed to save game' });
+      }
+    } catch (error) {
+      console.error('Error saving game:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/games/:id/pgn', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      const gameId = parseInt(req.params.id);
+
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      const game = await storage.getGameById(gameId);
+      if (!game) {
+        return res.status(404).json({ message: 'Game not found' });
+      }
+
+      // Check if user owns this game
+      if (game.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      res.setHeader('Content-Type', 'application/x-chess-pgn');
+      res.setHeader('Content-Disposition', `attachment; filename="game-${gameId}.pgn"`);
+      res.send(game.pgn || '');
+    } catch (error) {
+      console.error('Error exporting PGN:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 

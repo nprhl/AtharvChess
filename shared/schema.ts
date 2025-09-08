@@ -36,11 +36,27 @@ export const games = pgTable("games", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
   opponent: text("opponent"),
-  result: text("result").notNull(), // 'win', 'loss', 'draw'
-  moves: jsonb("moves").notNull(), // Array of chess moves
+  result: text("result").notNull(), // 'win', 'loss', 'draw', 'abandoned'
+  moves: jsonb("moves").notNull(), // Array of chess moves in SAN notation
+  pgn: text("pgn"), // Complete PGN notation with metadata
+  startingFen: text("starting_fen").notNull().default("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
+  finalFen: text("final_fen").notNull(),
+  openingName: text("opening_name"),
+  openingEco: text("opening_eco"), // ECO code (e.g., "B20")
+  totalMoves: integer("total_moves").notNull().default(0),
+  gameMode: text("game_mode").notNull().default("pvc"), // 'pvc' (player vs computer), 'pvp' (player vs player)
+  difficulty: text("difficulty"), // AI difficulty level when playing against computer
+  playerColor: text("player_color").notNull().default("white"), // 'white' or 'black'
+  timeControl: text("time_control"), // e.g., "10+0", "30+0", "blitz"
+  gameDuration: integer("game_duration"), // Total game duration in seconds
   eloChange: integer("elo_change").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_games_user_id").on(table.userId),
+  index("idx_games_result").on(table.result),
+  index("idx_games_created_at").on(table.createdAt),
+  index("idx_games_opening_eco").on(table.openingEco),
+]);
 
 export const lessons = pgTable("lessons", {
   id: serial("id").primaryKey(),
@@ -117,12 +133,19 @@ export const engineEvals = pgTable("engine_evals", {
   pk: primaryKey({ columns: [table.fen, table.depth, table.engine] }),
 }));
 
-// Game analysis and learning patterns
+// Enhanced game analysis with move evaluations
 export const gameAnalysis = pgTable("game_analysis", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
   gameId: integer("game_id").references(() => games.id),
-  movesAnalyzed: jsonb("moves_analyzed").notNull(), // Detailed move analysis
+  movesAnalyzed: jsonb("moves_analyzed").notNull(), // Detailed move analysis with evaluations
+  analysisEngine: text("analysis_engine").notNull().default("stockfish"), // Engine used for analysis
+  averageAccuracy: decimal("average_accuracy", { precision: 5, scale: 2 }), // Percentage accuracy
+  blunders: integer("blunders").notNull().default(0),
+  mistakes: integer("mistakes").notNull().default(0),
+  inaccuracies: integer("inaccuracies").notNull().default(0),
+  bestMovePercentage: decimal("best_move_percentage", { precision: 5, scale: 2 }),
+  analysisCompleted: boolean("analysis_completed").notNull().default(false),
   weaknessesFound: text("weaknesses_found").array(), // e.g., ['tactics', 'endgame', 'opening']
   strengthsFound: text("strengths_found").array(),
   suggestedLessons: text("suggested_lessons").array(),

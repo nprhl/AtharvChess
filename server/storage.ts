@@ -450,8 +450,67 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getGamesByUserId(userId: number): Promise<Game[]> {
-    return await db.select().from(games).where(eq(games.userId, userId));
+  async getGamesByUserId(userId: number, limit?: number, offset?: number): Promise<Game[]> {
+    let query = db.select().from(games).where(eq(games.userId, userId)).orderBy(desc(games.createdAt));
+    
+    if (limit) {
+      query = query.limit(limit);
+    }
+    if (offset) {
+      query = query.offset(offset);
+    }
+    
+    return await query;
+  }
+
+  async getGameById(gameId: number): Promise<Game | undefined> {
+    const [game] = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
+    return game;
+  }
+
+  async getGamesByUserIdWithFilters(
+    userId: number, 
+    filters: {
+      result?: string;
+      gameMode?: string;
+      dateFrom?: Date;
+      dateTo?: Date;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<Game[]> {
+    let whereConditions = [eq(games.userId, userId)];
+    
+    if (filters.result) {
+      whereConditions.push(eq(games.result, filters.result));
+    }
+    
+    if (filters.gameMode) {
+      whereConditions.push(eq(games.gameMode, filters.gameMode));
+    }
+    
+    if (filters.dateFrom) {
+      whereConditions.push(gte(games.createdAt, filters.dateFrom));
+    }
+    
+    if (filters.dateTo) {
+      whereConditions.push(lte(games.createdAt, filters.dateTo));
+    }
+
+    let query = db
+      .select()
+      .from(games)
+      .where(and(...whereConditions))
+      .orderBy(desc(games.createdAt));
+    
+    if (filters.limit) {
+      query = query.limit(filters.limit);
+    }
+    if (filters.offset) {
+      query = query.offset(filters.offset);
+    }
+    
+    return await query;
   }
 
   async createGame(insertGame: InsertGame): Promise<Game> {
