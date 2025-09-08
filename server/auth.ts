@@ -22,7 +22,8 @@ export function configureSession() {
       secure: isProduction, // HTTPS only in production
       httpOnly: true, // Prevent XSS attacks
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: isProduction ? 'strict' : 'lax', // CSRF protection
+      sameSite: 'lax', // Changed from 'strict' to 'lax' for better production compatibility
+      domain: process.env.COOKIE_DOMAIN, // Allow explicit domain setting for production
     },
     // Session regeneration security
     genid: () => {
