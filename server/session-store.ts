@@ -1,7 +1,7 @@
 import { Store, SessionData } from 'express-session';
 import { db } from './db';
 import { sessions } from '@shared/schema';
-import { eq, lt, and } from 'drizzle-orm';
+import { eq, lt, and, ne, sql } from 'drizzle-orm';
 
 export interface SecureSessionData extends SessionData {
   userId?: number;
@@ -22,7 +22,7 @@ export interface SessionStoreOptions {
 
 export class DatabaseSessionStore extends Store {
   private options: Required<SessionStoreOptions>;
-  private pruneTimer?: NodeJS.Timer;
+  private pruneTimer?: NodeJS.Timeout;
 
   constructor(options: SessionStoreOptions = {}) {
     super();
@@ -217,17 +217,17 @@ export class DatabaseSessionStore extends Store {
   async length(callback: (err?: any, length?: number) => void): Promise<void> {
     try {
       const result = await db
-        .select({ count: sessions.sid })
+        .select({ count: sql<number>`count(*)` })
         .from(sessions)
         .where(
           and(
             eq(sessions.isRevoked, false),
             // Only count non-expired sessions
-            lt(new Date(), sessions.expire) 
+            lt(sql`now()`, sessions.expire) 
           )
         );
 
-      callback(null, result.length);
+      callback(null, result[0]?.count || 0);
     } catch (error) {
       console.error('[SessionStore] Error getting session count:', error);
       callback(error);
@@ -274,26 +274,31 @@ export class DatabaseSessionStore extends Store {
     }
   }
 
-  // Revoke all sessions for a user (security feature)
+  // Revoke all sessions for a user (security feature)  
   async revokeUserSessions(userId: number, excludeSessionId?: string): Promise<number> {
     try {
-      let query = db
-        .update(sessions)
-        .set({ 
-          isRevoked: true,
-          lastActivity: new Date()
-        })
-        .where(eq(sessions.userId, userId));
-
-      // Exclude current session if specified
       if (excludeSessionId) {
-        query = query.where(and(
-          eq(sessions.userId, userId),
-          // ne(sessions.sid, excludeSessionId) // Exclude current session
-        ));
+        await db
+          .update(sessions)
+          .set({ 
+            isRevoked: true,
+            lastActivity: new Date()
+          })
+          .where(
+            and(
+              eq(sessions.userId, userId),
+              ne(sessions.sid, excludeSessionId)
+            )
+          );
+      } else {
+        await db
+          .update(sessions)
+          .set({ 
+            isRevoked: true,
+            lastActivity: new Date()
+          })
+          .where(eq(sessions.userId, userId));
       }
-
-      const result = await query;
 
       if (this.options.enableSecurityLogging) {
         console.log(`[SessionStore] Revoked sessions for user ${userId}, excluded: ${excludeSessionId}`);
@@ -361,7 +366,7 @@ export class DatabaseSessionStore extends Store {
         .delete(sessions)
         .where(
           // Delete expired sessions or old revoked sessions
-          lt(sessions.expire, now)
+          lt(sessions.expire, sql`${now}`)
         );
 
       if (this.options.enableSecurityLogging) {
@@ -379,7 +384,7 @@ export class DatabaseSessionStore extends Store {
   }
 
   // Cleanup on shutdown
-  destroy(): void {
+  cleanup(): void {
     if (this.pruneTimer) {
       clearInterval(this.pruneTimer);
       this.pruneTimer = undefined;
