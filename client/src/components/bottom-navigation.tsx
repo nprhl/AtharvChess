@@ -6,7 +6,7 @@ import { useNavigationItems, ROLES, PERMISSIONS } from "@/contexts/PermissionCon
 interface NavItem {
   id: string;
   path: string;
-  icon: LucideIcon;
+  icon?: React.ReactNode;
   label: string;
   permission?: string;
   role?: string;
@@ -17,25 +17,25 @@ const allNavItems: NavItem[] = [
   { 
     id: "play", 
     path: "/", 
-    icon: Gamepad2, 
+    icon: <Gamepad2 />, 
     label: "Play" 
   },
   { 
     id: "lessons", 
     path: "/lessons", 
-    icon: BookOpen, 
+    icon: <BookOpen />, 
     label: "Lessons" 
   },
   { 
     id: "tips", 
     path: "/tips", 
-    icon: Lightbulb, 
+    icon: <Lightbulb />, 
     label: "Tips" 
   },
   { 
     id: "tournaments", 
     path: "/tournaments", 
-    icon: Trophy, 
+    icon: <Trophy />, 
     label: "Tournaments",
     anyOf: {
       roles: [ROLES.STUDENT, ROLES.TEACHER, ROLES.COACH, ROLES.ORGANIZER, ROLES.SUPER_ADMIN]
@@ -44,7 +44,7 @@ const allNavItems: NavItem[] = [
   { 
     id: "organizations", 
     path: "/organizations", 
-    icon: Globe, 
+    icon: <Globe />, 
     label: "Orgs",
     anyOf: {
       roles: [ROLES.TEACHER, ROLES.COACH, ROLES.ORGANIZER, ROLES.SUPER_ADMIN],
@@ -54,19 +54,19 @@ const allNavItems: NavItem[] = [
   { 
     id: "history", 
     path: "/games/history", 
-    icon: History, 
+    icon: <History />, 
     label: "History" 
   },
   { 
     id: "progress", 
     path: "/progress", 
-    icon: BarChart3, 
+    icon: <BarChart3 />, 
     label: "Progress" 
   },
   { 
     id: "settings", 
     path: "/settings", 
-    icon: Settings, 
+    icon: <Settings />, 
     label: "Settings" 
   }
 ];
@@ -93,7 +93,7 @@ export default function BottomNavigation() {
     <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-2 py-2 z-50">
       <div className="flex items-center justify-around">
         {visibleNavItems.map((item) => {
-          const { path, icon: IconComponent, label } = item;
+          const { path, icon, label } = item;
           const isActive = location === path || 
             (path === "/tournaments" && location.startsWith("/tournaments")) ||
             (path === "/organizations" && location.startsWith("/organizations"));
@@ -103,9 +103,13 @@ export default function BottomNavigation() {
               <button className={`flex flex-col items-center py-2 px-2 rounded-lg transition-colors ${
                 isActive ? 'nav-tab active' : 'nav-tab'
               }`}>
-                <IconComponent className={`text-lg mb-1 ${
-                  isActive ? 'text-blue-400' : 'text-muted-foreground'
-                }`} size={20} />
+                {React.isValidElement(icon) ? 
+                  React.cloneElement(icon as React.ReactElement<any>, { 
+                    className: `text-lg mb-1 ${isActive ? 'text-blue-400' : 'text-muted-foreground'}`,
+                    size: 20 
+                  }) :
+                  icon
+                }
                 <span className={`text-xs ${
                   isActive ? 'text-blue-400 font-medium' : 'text-muted-foreground'
                 }`}>
