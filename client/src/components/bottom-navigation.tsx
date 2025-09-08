@@ -1,3 +1,4 @@
+import React from 'react';
 import { useLocation } from "wouter";
 import { Link } from "wouter";
 import { Gamepad2, BookOpen, Lightbulb, BarChart3, Settings, Trophy, Users, Globe, History, type LucideIcon } from "lucide-react";
