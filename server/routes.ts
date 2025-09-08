@@ -8,6 +8,7 @@ import { tipService } from "./tip-service";
 import { gameIntegration } from "./game-integration";
 import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema, insertOrganizationSchema, insertTournamentSchema, type InsertUser } from "@shared/schema";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import { z } from "zod";
 import { StockfishAI } from "./stockfish-ai";
 import { OpenAIChessAI } from "./openai-chess-ai";
@@ -25,6 +26,7 @@ import { requirePermission, requireRole, PERMISSIONS, attachUserPermissions, get
 import { registrationService } from "./tournament-registration";
 import { pairingAlgorithms } from "./pairing-algorithms";
 import { roundManagement } from "./round-management";
+import { notificationService } from "./notification-service";
 
 // Hash password helper function
 async function hashPassword(password: string): Promise<string> {
@@ -204,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate reset token (valid for 1 hour)
-      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetToken = randomBytes(32).toString('hex');
       const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
 
       // Store reset token in database (you'd need to add this to the user schema)
@@ -213,11 +215,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resetTokenExpiry: resetExpiry 
       });
 
-      // In a real app, you would send an email here
-      // For now, we'll just log the reset token
-      console.log(`Password reset requested for ${email}`);
-      console.log(`Reset token: ${resetToken}`);
-      console.log(`Reset link: ${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`);
+      // Send password reset notification
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      
+      // Try to send SMS if user has phone number, otherwise fallback to email logging
+      if (user.phoneNumber) {
+        await notificationService.sendPasswordResetSMS(user.phoneNumber, resetToken, baseUrl);
+      } else {
+        await notificationService.sendPasswordResetEmail(email, resetToken, baseUrl);
+      }
 
       res.json({ message: "If your email is registered, you will receive a password reset link." });
     } catch (error) {
@@ -241,7 +247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Find user with valid reset token  
       const allUsers = await storage.getAllUsers();
-      const user = allUsers.find((u: any) => 
+      const user = allUsers.find((u) => 
         u.resetToken === token && 
         u.resetTokenExpiry && 
         new Date(u.resetTokenExpiry) > new Date()

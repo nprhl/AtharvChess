@@ -20,6 +20,7 @@ import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import ForgotPasswordPage from "@/pages/forgot-password";
 import ResetPasswordPage from "@/pages/reset-password";
+import ForgotPasswordTestPage from "@/pages/forgot-password-test";
 import OnboardingPage from "@/pages/onboarding";
 import NotFound from "@/pages/not-found";
 import HeaderNavigation from "@/components/header-navigation";
@@ -44,6 +45,7 @@ function Router() {
         <Route path="/register" component={RegisterPage} />
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/reset-password" component={ResetPasswordPage} />
+        <Route path="/test-forgot-password" component={ForgotPasswordTestPage} />
         <Route>
           <div className="min-h-screen flex items-center justify-center bg-background">
             <div className="max-w-md w-full space-y-8 p-8">
