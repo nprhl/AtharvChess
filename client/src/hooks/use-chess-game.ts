@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Chess, Square, Move } from 'chess.js';
 import { ChessGameEngine } from '@/lib/chess-game';
 import { GameStorageManager, type GameState } from '@/lib/local-storage';
+import { useAuth } from '@/hooks/useAuth';
 
 export type GameMode = 'pvp' | 'pvc'; // Player vs Player or Player vs Computer
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
@@ -24,6 +25,7 @@ interface UseChessGameOptions {
 
 export function useChessGame(options: UseChessGameOptions = {}) {
   const { initialFen, gameMode = 'pvp', difficulty = 'beginner', playerColor = 'w' } = options;
+  const { user } = useAuth();
   
   const [gameEngine] = useState(() => new ChessGameEngine(initialFen));
   const [, forceUpdate] = useState(0);
@@ -32,6 +34,10 @@ export function useChessGame(options: UseChessGameOptions = {}) {
   const [currentDifficulty, setCurrentDifficulty] = useState(difficulty);
   const [currentPlayerColor, setCurrentPlayerColor] = useState(playerColor);
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
+  // Game tracking state for database saving
+  const [gameStartTime, setGameStartTime] = useState<Date | null>(null);
+  const [gameHasStarted, setGameHasStarted] = useState(false);
+  const [gameHasEnded, setGameHasEnded] = useState(false);
   // Removed move evaluation state - now handled by Stockfish analysis
   const [promotionPending, setPromotionPending] = useState<{
     from: Square;
@@ -59,6 +65,68 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     setCurrentDifficulty(difficulty);
     setCurrentPlayerColor(playerColor);
   }, [gameMode, difficulty, playerColor]);
+
+  // Initialize game start time when first move is made
+  useEffect(() => {
+    if (gameEngine.history.length > 0 && !gameHasStarted) {
+      setGameStartTime(new Date());
+      setGameHasStarted(true);
+      setGameHasEnded(false);
+    }
+  }, [gameEngine.history.length, gameHasStarted]);
+
+  // Detect game completion and save to database
+  useEffect(() => {
+    if (gameHasStarted && !gameHasEnded && gameEngine.isGameOver()) {
+      const saveGameToDatabase = async () => {
+        if (!user?.id || !gameStartTime) return;
+
+        try {
+          // Determine result from player's perspective
+          let result: 'win' | 'loss' | 'draw' | 'abandoned';
+          
+          if (gameEngine.isDraw()) {
+            result = 'draw';
+          } else if (gameEngine.isCheckmate()) {
+            // If it's checkmate, determine who won
+            const currentTurn = gameEngine.turn;
+            const playerIsWhite = currentPlayerColor === 'w';
+            const playerWon = (currentTurn === 'b' && playerIsWhite) || (currentTurn === 'w' && !playerIsWhite);
+            result = playerWon ? 'win' : 'loss';
+          } else {
+            result = 'draw'; // Other game-ending conditions (stalemate, etc.)
+          }
+
+          const gameEndTime = new Date();
+          const gameDurationSeconds = Math.floor((gameEndTime.getTime() - gameStartTime.getTime()) / 1000);
+          
+          const gameData = {
+            opponent: currentGameMode === 'pvc' ? 'Computer' : 'Human Player',
+            result,
+            moves: gameEngine.history.map(move => move.san),
+            gameMode: currentGameMode,
+            difficulty: currentGameMode === 'pvc' ? currentDifficulty : undefined,
+            playerColor: currentPlayerColor === 'w' ? 'white' : 'black',
+            timeControl: undefined, // Could add time control support later
+            gameDurationSeconds
+          };
+
+          await fetch('/api/games/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(gameData)
+          });
+
+          console.log('[GameHistory] Game saved to database:', { result, moves: gameData.moves.length });
+        } catch (error) {
+          console.error('[GameHistory] Failed to save game:', error);
+        }
+      };
+
+      setGameHasEnded(true);
+      saveGameToDatabase();
+    }
+  }, [gameHasStarted, gameHasEnded, gameEngine, user?.id, gameStartTime, currentGameMode, currentDifficulty, currentPlayerColor]);
 
   // Load saved game on mount
   useEffect(() => {
@@ -217,6 +285,10 @@ export function useChessGame(options: UseChessGameOptions = {}) {
   const resetGame = useCallback(() => {
     gameEngine.reset();
     setLastMove(null); // Clear last move highlighting
+    // Reset game tracking state for new game
+    setGameStartTime(null);
+    setGameHasStarted(false);
+    setGameHasEnded(false);
     triggerUpdate();
     GameStorageManager.clearGame();
   }, [gameEngine, triggerUpdate]);
