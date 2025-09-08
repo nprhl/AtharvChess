@@ -16,6 +16,8 @@ import TournamentsPage from "@/pages/tournaments";
 import TournamentCreatePage from "@/pages/tournament-create";
 import TournamentDetailPage from "@/pages/tournament-detail";
 import OrganizationsPage from "@/pages/organizations";
+import GameHistoryPage from "@/pages/game-history";
+import GameReplayPage from "@/pages/game-replay";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import ForgotPasswordPage from "@/pages/forgot-password";
@@ -100,6 +102,8 @@ function Router() {
           <Route path="/tournaments/create" component={TournamentCreatePage} />
           <Route path="/tournaments/:id" component={TournamentDetailPage} />
           <Route path="/organizations" component={OrganizationsPage} />
+          <Route path="/games/history" component={GameHistoryPage} />
+          <Route path="/games/:id/replay" component={GameReplayPage} />
           <Route path="/progress" component={ProgressPage} />
           <Route path="/settings" component={SettingsPage} />
           <Route component={NotFound} />

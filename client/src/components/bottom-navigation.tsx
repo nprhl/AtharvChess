@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Link } from "wouter";
-import { Gamepad2, BookOpen, Lightbulb, BarChart3, Settings, Trophy, Users, Globe, type LucideIcon } from "lucide-react";
+import { Gamepad2, BookOpen, Lightbulb, BarChart3, Settings, Trophy, Users, Globe, History, type LucideIcon } from "lucide-react";
 import { useNavigationItems, ROLES, PERMISSIONS } from "@/contexts/PermissionContext";
 
 interface NavItem {
@@ -50,6 +50,12 @@ const allNavItems: NavItem[] = [
       roles: [ROLES.TEACHER, ROLES.COACH, ROLES.ORGANIZER, ROLES.SUPER_ADMIN],
       permissions: [PERMISSIONS.ORG_MANAGE, PERMISSIONS.ORG_VIEW_MEMBERS]
     }
+  },
+  { 
+    id: "history", 
+    path: "/games/history", 
+    icon: History, 
+    label: "History" 
   },
   { 
     id: "progress", 
