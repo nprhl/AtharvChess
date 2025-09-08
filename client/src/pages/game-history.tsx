@@ -38,8 +38,8 @@ export default function GameHistoryPage() {
   const [filters, setFilters] = useState({
     page: 1,
     limit: 20,
-    result: '',
-    gameMode: '',
+    result: 'all',
+    gameMode: 'all',
     dateFrom: '',
     dateTo: ''
   });
@@ -49,7 +49,7 @@ export default function GameHistoryPage() {
     queryFn: async () => {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
-        if (value) params.append(key, value.toString());
+        if (value && value !== 'all') params.append(key, value.toString());
       });
       
       const response = await fetch(`/api/games/history?${params}`);
@@ -148,13 +148,13 @@ export default function GameHistoryPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Select 
               value={filters.result} 
-              onValueChange={(value) => setFilters(prev => ({ ...prev, result: value, page: 1 }))}
+              onValueChange={(value) => setFilters(prev => ({ ...prev, result: value === 'all' ? '' : value, page: 1 }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All Results" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Results</SelectItem>
+                <SelectItem value="all">All Results</SelectItem>
                 <SelectItem value="win">Wins</SelectItem>
                 <SelectItem value="loss">Losses</SelectItem>
                 <SelectItem value="draw">Draws</SelectItem>
@@ -164,13 +164,13 @@ export default function GameHistoryPage() {
 
             <Select 
               value={filters.gameMode} 
-              onValueChange={(value) => setFilters(prev => ({ ...prev, gameMode: value, page: 1 }))}
+              onValueChange={(value) => setFilters(prev => ({ ...prev, gameMode: value === 'all' ? '' : value, page: 1 }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All Modes" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Modes</SelectItem>
+                <SelectItem value="all">All Modes</SelectItem>
                 <SelectItem value="pvc">vs Computer</SelectItem>
                 <SelectItem value="pvp">vs Player</SelectItem>
               </SelectContent>
@@ -195,7 +195,7 @@ export default function GameHistoryPage() {
             <Button
               variant="outline"
               onClick={() => setFilters({
-                page: 1, limit: 20, result: '', gameMode: '', dateFrom: '', dateTo: ''
+                page: 1, limit: 20, result: 'all', gameMode: 'all', dateFrom: '', dateTo: ''
               })}
             >
               Clear Filters
