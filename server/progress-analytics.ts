@@ -2,7 +2,7 @@ import { Chess } from 'chess.js';
 import { OpenAI } from 'openai';
 import { StockfishAI } from './stockfish-ai';
 import { enhancedChessAI } from './enhanced-chess-ai';
-import { database } from './database';
+import { db } from './db';
 import { 
   games, 
   gameAnalysis, 
@@ -76,7 +76,7 @@ export class ProgressAnalyticsService {
       console.log(`[ProgressAnalytics] Starting analysis for game ${gameId}`);
 
       // Get game data
-      const game = await database.select().from(games).where(eq(games.id, gameId)).limit(1);
+      const game = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
       if (!game.length) {
         console.error(`Game ${gameId} not found`);
         return null;
@@ -88,7 +88,7 @@ export class ProgressAnalyticsService {
       // Perform comprehensive analysis
       const analysis = await this.performGameAnalysis(gameData, moves);
       
-      // Save analysis to database
+      // Save analysis to db
       await this.saveAnalysisResults(analysis);
       
       // Update user skill analytics
@@ -272,8 +272,8 @@ export class ProgressAnalyticsService {
   private async getPositionEvaluation(fen: string): Promise<number> {
     try {
       // Try Stockfish first for accurate evaluation
-      const evaluation = await this.stockfish.evaluatePosition(fen);
-      return evaluation || 0;
+      const analysis = await this.stockfish.getAnalysis(fen);
+      return analysis?.evaluation || 0;
     } catch (error) {
       console.log('Stockfish evaluation failed, using fallback');
       return 0;
@@ -458,12 +458,12 @@ Return only a number between 0 and 100.`;
   }
 
   /**
-   * Save analysis results to database
+   * Save analysis results to db
    */
   private async saveAnalysisResults(analysis: CompleteGameAnalysis): Promise<void> {
     try {
       // Save game analysis
-      await database.insert(gameAnalysis).values({
+      await db.insert(gameAnalysis).values({
         userId: analysis.userId,
         gameId: analysis.gameId,
         movesAnalyzed: analysis.moves,
@@ -485,7 +485,7 @@ Return only a number between 0 and 100.`;
         const phaseMoves = analysis.moves.filter(m => m.phase === phase.phase);
         const phaseAccuracy = phaseMoves.reduce((sum, m) => sum + m.accuracy, 0) / Math.max(1, phaseMoves.length);
         
-        await database.insert(gamePhaseAnalysis).values({
+        await db.insert(gamePhaseAnalysis).values({
           gameId: analysis.gameId,
           userId: analysis.userId,
           openingEnd: analysis.phases.find(p => p.phase === 'opening')?.endMove || 12,
@@ -513,7 +513,7 @@ Return only a number between 0 and 100.`;
   private async updateUserSkillAnalytics(userId: number, analysis: CompleteGameAnalysis): Promise<void> {
     try {
       // Get or create user skill analytics
-      const existing = await database.select()
+      const existing = await db.select()
         .from(userSkillAnalytics)
         .where(eq(userSkillAnalytics.userId, userId))
         .limit(1);
@@ -529,7 +529,7 @@ Return only a number between 0 and 100.`;
 
       if (existing.length === 0) {
         // Create new analytics record
-        await database.insert(userSkillAnalytics).values({
+        await db.insert(userSkillAnalytics).values({
           userId,
           openingStrength: Math.round(1200 + (phaseAccuracies.opening - 75) * 10),
           middlegameStrength: Math.round(1200 + (phaseAccuracies.middlegame - 75) * 10),
@@ -545,7 +545,7 @@ Return only a number between 0 and 100.`;
         const current = existing[0];
         const weight = 0.1; // 10% weight for new game
         
-        await database.update(userSkillAnalytics)
+        await db.update(userSkillAnalytics)
           .set({
             openingStrength: Math.round(current.openingStrength * (1 - weight) + 
               (1200 + (phaseAccuracies.opening - 75) * 10) * weight),
@@ -578,7 +578,7 @@ Return only a number between 0 and 100.`;
    */
   private async updateOpeningPerformance(userId: number, gameData: any, analysis: CompleteGameAnalysis): Promise<void> {
     try {
-      const existing = await database.select()
+      const existing = await db.select()
         .from(openingPerformance)
         .where(and(
           eq(openingPerformance.userId, userId),
@@ -593,7 +593,7 @@ Return only a number between 0 and 100.`;
 
       if (existing.length === 0) {
         // Create new opening performance record
-        await database.insert(openingPerformance).values({
+        await db.insert(openingPerformance).values({
           userId,
           openingEco: gameData.openingEco,
           openingName: gameData.openingName || 'Unknown Opening',
@@ -617,7 +617,7 @@ Return only a number between 0 and 100.`;
         const newAvgAccuracy = (parseFloat(current.averageAccuracy) * current.gamesPlayed + 
           analysis.openingPerformance.accuracy / 100) / newGamesPlayed;
 
-        await database.update(openingPerformance)
+        await db.update(openingPerformance)
           .set({
             gamesPlayed: newGamesPlayed,
             wins: newWins,
