@@ -1,9 +1,19 @@
 import { useLocation } from "wouter";
 import { Link } from "wouter";
-import { Gamepad2, BookOpen, Lightbulb, BarChart3, Settings, Trophy, Users, Globe } from "lucide-react";
+import { Gamepad2, BookOpen, Lightbulb, BarChart3, Settings, Trophy, Users, Globe, LucideIcon } from "lucide-react";
 import { useNavigationItems, ROLES, PERMISSIONS } from "@/contexts/PermissionContext";
 
-const allNavItems = [
+interface NavItem {
+  id: string;
+  path: string;
+  icon: LucideIcon;
+  label: string;
+  permission?: string;
+  role?: string;
+  anyOf?: { permissions?: string[]; roles?: string[] };
+}
+
+const allNavItems: NavItem[] = [
   { 
     id: "play", 
     path: "/", 

@@ -109,7 +109,7 @@ function Router() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <PermissionProvider>
             <div className="min-h-screen bg-background text-foreground">

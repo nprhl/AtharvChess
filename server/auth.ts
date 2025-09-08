@@ -2,6 +2,7 @@ import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
 import bcrypt from 'bcryptjs';
 import session from 'express-session';
+import crypto from 'crypto';
 import { storage } from './storage';
 import type { User } from '@shared/schema';
 import type { Express, RequestHandler, Request } from 'express';
@@ -26,7 +27,6 @@ export function configureSession() {
     // Session regeneration security
     genid: () => {
       // Generate cryptographically secure session ID
-      const crypto = require('crypto');
       return crypto.randomBytes(32).toString('hex');
     },
   });
