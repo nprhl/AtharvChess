@@ -453,11 +453,12 @@ export class DatabaseStorage implements IStorage {
   async getGamesByUserId(userId: number, limit?: number, offset?: number): Promise<Game[]> {
     let query = db.select().from(games).where(eq(games.userId, userId)).orderBy(desc(games.createdAt));
     
-    if (limit) {
-      query = query.limit(limit);
-    }
-    if (offset) {
-      query = query.offset(offset);
+    if (limit && offset) {
+      return await query.limit(limit).offset(offset);
+    } else if (limit) {
+      return await query.limit(limit);
+    } else if (offset) {
+      return await query.offset(offset);
     }
     
     return await query;
@@ -497,20 +498,21 @@ export class DatabaseStorage implements IStorage {
       whereConditions.push(lte(games.createdAt, filters.dateTo));
     }
 
-    let query = db
+    let baseQuery = db
       .select()
       .from(games)
       .where(and(...whereConditions))
       .orderBy(desc(games.createdAt));
     
-    if (filters.limit) {
-      query = query.limit(filters.limit);
-    }
-    if (filters.offset) {
-      query = query.offset(filters.offset);
+    if (filters.limit && filters.offset) {
+      return await baseQuery.limit(filters.limit).offset(filters.offset);
+    } else if (filters.limit) {
+      return await baseQuery.limit(filters.limit);
+    } else if (filters.offset) {
+      return await baseQuery.offset(filters.offset);
     }
     
-    return await query;
+    return await baseQuery;
   }
 
   async createGame(insertGame: InsertGame): Promise<Game> {
@@ -952,17 +954,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOrganizations(filters: any = {}): Promise<Organization[]> {
-    let query = db.select().from(organizations);
+    let whereConditions = [];
     
     if (filters.type) {
-      query = query.where(eq(organizations.type, filters.type));
+      whereConditions.push(eq(organizations.type, filters.type));
     }
     
     if (filters.isVerified !== undefined) {
-      query = query.where(eq(organizations.isVerified, filters.isVerified));
+      whereConditions.push(eq(organizations.isVerified, filters.isVerified));
     }
     
-    return await query;
+    if (whereConditions.length > 0) {
+      return await db.select().from(organizations).where(and(...whereConditions));
+    }
+    
+    return await db.select().from(organizations);
   }
 
   // User role methods
@@ -1034,17 +1040,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTournaments(filters: any = {}): Promise<Tournament[]> {
-    let query = db.select().from(tournaments);
+    let whereConditions = [];
     
     if (filters.organizerId) {
-      query = query.where(eq(tournaments.organizerId, filters.organizerId));
+      whereConditions.push(eq(tournaments.organizerId, filters.organizerId));
     }
     
     if (filters.status) {
-      query = query.where(eq(tournaments.status, filters.status));
+      whereConditions.push(eq(tournaments.status, filters.status));
     }
     
-    return await query;
+    if (whereConditions.length > 0) {
+      return await db.select().from(tournaments).where(and(...whereConditions));
+    }
+    
+    return await db.select().from(tournaments);
   }
 }
 
