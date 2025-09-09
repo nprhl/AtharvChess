@@ -34,6 +34,8 @@ import { progressAnalytics } from './progress-analytics';
 import { userSkillAnalytics } from '@shared/schema';
 import { learningDetector, type AnalysisContext, type LearningOpportunity } from './learning-opportunity-detector';
 import { Chess } from 'chess.js';
+import { moveClassifier, type MoveClassification } from './move-classifier';
+import { openingBook } from './opening-book';
 
 // Hash password helper function
 async function hashPassword(password: string): Promise<string> {
@@ -1185,6 +1187,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
           strategic: [],
           rating: 5
         }
+      });
+    }
+  });
+
+  // Chess.com-style Move Classification endpoint
+  app.post("/api/ai/classify-move", async (req, res) => {
+    try {
+      const { 
+        move,
+        fenBefore, 
+        fenAfter, 
+        moveNumber = 1,
+        gameHistory = []
+      } = req.body;
+
+      if (!move || !fenBefore || !fenAfter) {
+        return res.status(400).json({ 
+          error: "Move, before FEN, and after FEN are required" 
+        });
+      }
+
+      console.log(`[MoveClassification] Classifying move: ${move} (move ${moveNumber})`);
+
+      // Classify the move using our chess.com-style system
+      const classification = await moveClassifier.classifyMove(
+        fenBefore,
+        fenAfter,
+        move,
+        moveNumber
+      );
+
+      // Check opening book if in opening phase
+      let openingInfo = null;
+      if (moveNumber <= 20) {
+        const openingEval = openingBook.evaluateOpeningMove(fenBefore, move, moveNumber);
+        if (openingEval.isBook && openingEval.opening) {
+          openingInfo = {
+            name: openingEval.opening.name,
+            popularity: openingEval.opening.popularity,
+            successRate: openingEval.opening.successRate,
+            description: openingEval.opening.description,
+            variations: openingEval.opening.variations
+          };
+        }
+      }
+
+      const response = {
+        classification,
+        openingInfo,
+        moveNumber,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log(`[MoveClassification] Move ${move} classified as: ${classification.category} (${classification.accuracy}% accuracy)`);
+      res.json(response);
+
+    } catch (error) {
+      console.error('Move classification error:', error);
+      res.status(500).json({ 
+        error: "Move classification service unavailable",
+        classification: {
+          category: 'good',
+          centipawnLoss: 50,
+          accuracy: 75,
+          explanation: `Move ${req.body.move} analyzed (detailed analysis unavailable)`,
+          icon: '✔',
+          color: '#FFEB3B',
+          gamePhase: 'middlegame'
+        }
+      });
+    }
+  });
+
+  // Enhanced real-time move analysis with classification
+  app.post("/api/ai/analyze-move", async (req, res) => {
+    try {
+      const { 
+        move,
+        fenBefore, 
+        fenAfter, 
+        moveNumber = 1,
+        gameHistory = [],
+        includeClassification = true
+      } = req.body;
+
+      if (!move || !fenBefore) {
+        return res.status(400).json({ 
+          error: "Move and before FEN are required" 
+        });
+      }
+
+      const user = (req as any).user;
+      console.log(`[MoveAnalysis] Analyzing move: ${move} for user ${user?.id || 'guest'}`);
+
+      // Get real-time analysis of the position
+      const analysisResult: any = {
+        move,
+        moveNumber,
+        analysis: null,
+        classification: null,
+        openingInfo: null,
+        timestamp: new Date().toISOString()
+      };
+
+      // Analyze the position after the move
+      if (fenAfter) {
+        try {
+          const engineResult = await enhancedChessAI.getAnalysis(fenAfter, 12);
+          
+          if (engineResult && engineResult.bestMove) {
+            analysisResult.analysis = {
+              bestMove: engineResult.bestMoveSan,
+              evaluation: engineResult.evaluation,
+              depth: engineResult.depth,
+              engine: engineResult.engine
+            };
+          }
+        } catch (analysisError) {
+          console.warn('[MoveAnalysis] Engine analysis failed:', analysisError);
+        }
+      }
+
+      // Add move classification if requested
+      if (includeClassification && fenAfter) {
+        try {
+          const classification = await moveClassifier.classifyMove(
+            fenBefore,
+            fenAfter,
+            move,
+            moveNumber
+          );
+          analysisResult.classification = classification;
+
+          // Add opening information for early moves
+          if (moveNumber <= 20) {
+            const openingEval = openingBook.evaluateOpeningMove(fenBefore, move, moveNumber);
+            if (openingEval.isBook && openingEval.opening) {
+              analysisResult.openingInfo = {
+                name: openingEval.opening.name,
+                popularity: openingEval.opening.popularity,
+                description: openingEval.opening.description
+              };
+            }
+          }
+
+          console.log(`[MoveAnalysis] Move ${move} classified as: ${classification.category}`);
+        } catch (classificationError) {
+          console.warn('[MoveAnalysis] Classification failed:', classificationError);
+        }
+      }
+
+      res.json(analysisResult);
+
+    } catch (error) {
+      console.error('Move analysis error:', error);
+      res.status(500).json({ 
+        error: "Move analysis service unavailable"
       });
     }
   });
