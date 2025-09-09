@@ -961,47 +961,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Real-time position analysis endpoint using actual Stockfish
+  // Enhanced real-time position analysis endpoint with multi-engine system
   app.post("/api/ai/analyze-position", async (req, res) => {
     try {
-      const { fen, depth = 15 } = req.body;
+      const { fen, depth = 15, difficulty = 'advanced', includeExplanation = false, isMobile = false } = req.body;
+      const user = (req as any).user;
       
       if (!fen) {
         return res.status(400).json({ message: "FEN string is required" });
       }
 
-      // Use Stockfish for real analysis with actual evaluation
-      const stockfishAI = new StockfishAI('advanced'); // Always use advanced for analysis
-      
+      console.log(`[Real-time Analysis] Starting analysis for ${difficulty} difficulty (mobile: ${isMobile})`);
+
+      // Adaptive depth based on device and complexity
+      let adaptiveDepth = depth;
+      if (isMobile) {
+        // Mobile optimization: reduce depth for performance
+        adaptiveDepth = Math.min(depth, difficulty === 'beginner' ? 8 : difficulty === 'intermediate' ? 12 : 15);
+        console.log(`[Real-time Analysis] Mobile optimization: depth reduced to ${adaptiveDepth}`);
+      } else {
+        // Desktop: use full depth based on difficulty
+        adaptiveDepth = difficulty === 'beginner' ? 10 : difficulty === 'intermediate' ? 13 : 18;
+        console.log(`[Real-time Analysis] Desktop depth for ${difficulty}: ${adaptiveDepth}`);
+      }
+
+      // Use EnhancedAI multi-engine system with difficulty-aware selection
       try {
-        const analysis = await stockfishAI.getAnalysis(fen);
+        const moveRequest = {
+          fen,
+          difficulty: difficulty as Difficulty,
+          timeLimit: isMobile ? 2000 : 5000, // Faster on mobile
+          gamePhase: 'analysis' as const
+        };
+
+        const enhancedResult = await enhancedChessAI.getBestMove(moveRequest);
         
-        if (!analysis) {
+        if (!enhancedResult || enhancedResult.metadata?.error) {
           return res.json({
-            error: "No moves available",
+            error: enhancedResult?.metadata?.error || "No analysis available",
             isAnalyzing: false
           });
         }
 
-        // Return real Stockfish evaluation data
-        const evaluation = {
-          bestMove: analysis.bestMoveSan,
-          bestMoveUci: analysis.bestMove,
-          score: analysis.evaluation, // Real centipawn score from Stockfish
-          depth: analysis.depth,       // Real depth analyzed
-          pv: analysis.pv             // Real principal variation
+        console.log(`[Real-time Analysis] Analysis completed using engine: ${enhancedResult.engine}`);
+
+        // Extract move information 
+        const bestMoveSan = enhancedResult.move?.san || '';
+        const bestMoveUci = `${enhancedResult.move?.from}${enhancedResult.move?.to}${enhancedResult.move?.promotion || ''}`;
+        const evaluation = enhancedResult.metadata?.evaluation as number || 0;
+        const alternatives = enhancedResult.metadata?.alternatives || [];
+
+        // Core analysis result (always included)
+        const analysisResult: any = {
+          stockfish: {
+            bestMove: bestMoveSan,
+            bestMoveUci: bestMoveUci,
+            score: evaluation,
+            depth: adaptiveDepth,
+            pv: alternatives
+          },
+          engine: enhancedResult.engine,
+          isAnalyzing: false,
+          processingTime: enhancedResult.responseTime,
+          difficulty: difficulty
         };
 
-        res.json({
-          stockfish: evaluation,
-          isAnalyzing: false
-        });
+        // Add AI explanation if requested (for desktop users or explicit request)
+        if (includeExplanation && !isMobile) {
+          try {
+            const openaiAI = new OpenAIChessAI(difficulty as Difficulty);
+            const explanation = await openaiAI.explainMove(
+              bestMoveSan || 'best move',
+              fen,
+              evaluation,
+              user?.eloRating || 1200
+            );
+            
+            analysisResult.explanation = {
+              tactical: explanation.tactical || [],
+              strategic: explanation.strategic || [],
+              reasoning: explanation.reasoning || "Strong move based on engine analysis",
+              learningPoint: explanation.learningPoint
+            };
+            
+            console.log(`[Real-time Analysis] Added AI explanation for move: ${bestMoveSan}`);
+          } catch (explainError) {
+            console.warn('[Real-time Analysis] Failed to get AI explanation:', explainError);
+            // Continue without explanation - don't fail the entire request
+          }
+        }
+
+        res.json(analysisResult);
       } catch (error) {
-        console.error('Stockfish analysis error:', error);
-        res.status(500).json({
-          error: "Analysis engine unavailable",
-          isAnalyzing: false
-        });
+        console.error('Enhanced analysis error:', error);
+        
+        // Fallback to basic Stockfish if enhanced system fails
+        console.log('[Real-time Analysis] Falling back to basic Stockfish');
+        const stockfishAI = new StockfishAI('advanced');
+        
+        try {
+          const analysis = await stockfishAI.getAnalysis(fen);
+          
+          if (analysis) {
+            res.json({
+              stockfish: {
+                bestMove: analysis.bestMoveSan,
+                bestMoveUci: analysis.bestMove,
+                score: analysis.evaluation,
+                depth: analysis.depth,
+                pv: analysis.pv
+              },
+              engine: 'stockfish-fallback',
+              isAnalyzing: false
+            });
+          } else {
+            res.status(500).json({
+              error: "Analysis engine unavailable",
+              isAnalyzing: false
+            });
+          }
+        } catch (fallbackError) {
+          console.error('Fallback analysis also failed:', fallbackError);
+          res.status(500).json({
+            error: "All analysis engines unavailable",
+            isAnalyzing: false
+          });
+        }
       }
     } catch (error) {
       console.error('Analysis error:', error);

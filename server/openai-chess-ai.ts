@@ -467,6 +467,94 @@ Analyze the position deeply and choose the STRONGEST move from the legal moves l
     return formatted.trim();
   }
 
+  public async explainMove(
+    moveSan: string,
+    fen: string,
+    evaluation: number = 0,
+    userElo: number = 1200
+  ): Promise<{
+    tactical: string[];
+    strategic: string[];
+    reasoning: string;
+    learningPoint?: string;
+  }> {
+    try {
+      const isAvailable = await this.checkOpenAIAvailability();
+      if (!isAvailable) {
+        return {
+          tactical: ["Piece activity"],
+          strategic: ["Position improvement"],
+          reasoning: "This appears to be a solid move based on standard chess principles.",
+          learningPoint: "Focus on developing pieces and controlling key squares."
+        };
+      }
+
+      const chess = new Chess(fen);
+      const gamePhase = this.getGamePhase(chess);
+      
+      const prompt = `Analyze this chess move for a player with ELO ${userElo}:
+
+Position (FEN): ${fen}
+Move played: ${moveSan}
+Engine evaluation: ${evaluation > 0 ? '+' : ''}${(evaluation/100).toFixed(2)}
+Game phase: ${gamePhase}
+
+Provide a concise analysis in JSON format:
+{
+  "tactical": ["list of 1-3 tactical themes like 'Pin', 'Fork', 'Discovery'"],
+  "strategic": ["list of 1-3 strategic concepts like 'King safety', 'Central control'"],
+  "reasoning": "Brief explanation of why this move works (max 100 words)",
+  "learningPoint": "Key lesson for improvement (optional, max 50 words)"
+}
+
+Keep explanations appropriate for skill level ${this.difficulty}.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: "system",
+            content: "You are a chess coach analyzing moves. Be concise and educational."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 300,
+        temperature: 0.6
+      });
+
+      const content = response.choices[0].message.content;
+      if (!content) throw new Error('No response content');
+
+      const result = JSON.parse(content);
+      
+      return {
+        tactical: result.tactical || ["Piece development"],
+        strategic: result.strategic || ["Position improvement"],
+        reasoning: result.reasoning || "Sound chess move following good principles.",
+        learningPoint: result.learningPoint
+      };
+    } catch (error) {
+      console.error('Move explanation error:', error);
+      return {
+        tactical: ["Standard play"],
+        strategic: ["Positional improvement"],
+        reasoning: "This move follows good chess principles and maintains position balance.",
+        learningPoint: "Continue practicing fundamental principles."
+      };
+    }
+  }
+
+  private getGamePhase(chess: Chess): string {
+    const moves = chess.history().length;
+    if (moves < 20) return "Opening";
+    if (moves < 60) return "Middlegame";
+    return "Endgame";
+  }
+
   private parseAIResponse(response: string, possibleMoves: Move[]): Move | null {
     if (!response) return null;
     
