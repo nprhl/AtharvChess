@@ -182,27 +182,60 @@ export class EnhancedChessAI {
       }
     }
 
-    // Determine best engine based on context
+    // Determine best engine based on difficulty level
     let preferredEngines: string[] = [];
 
-    // MAIA-2 is ideal for educational contexts
-    if (this.isEngineHealthy('maia2') && this.engineConfigs.get('maia2')?.enabled) {
-      preferredEngines.push('maia2');
+    console.log(`[EnhancedAI] Selecting engine for difficulty: ${request.difficulty}`);
+
+    switch (request.difficulty) {
+      case 'advanced':
+        // Advanced: Prioritize strongest engines first
+        console.log('[EnhancedAI] Advanced difficulty - prioritizing Stockfish for master-level play');
+        if (this.isEngineHealthy('stockfish')) {
+          preferredEngines.push('stockfish'); // Depth 15, Skill 20 - Master level!
+        }
+        if (this.isEngineHealthy('openai') && this.engineConfigs.get('openai')?.enabled) {
+          preferredEngines.push('openai'); // Strategic AI analysis
+        }
+        if (this.isEngineHealthy('maia2') && this.engineConfigs.get('maia2')?.enabled) {
+          preferredEngines.push('maia2'); // Educational AI
+        }
+        break;
+
+      case 'intermediate':
+        // Intermediate: Balanced approach
+        console.log('[EnhancedAI] Intermediate difficulty - balanced engine selection');
+        if (this.isEngineHealthy('openai') && this.engineConfigs.get('openai')?.enabled) {
+          preferredEngines.push('openai'); // Good strategic play
+        }
+        if (this.isEngineHealthy('stockfish')) {
+          preferredEngines.push('stockfish'); // Depth 10, Skill 10
+        }
+        if (this.isEngineHealthy('maia2') && this.engineConfigs.get('maia2')?.enabled) {
+          preferredEngines.push('maia2'); // Educational insights
+        }
+        break;
+
+      case 'beginner':
+      default:
+        // Beginner: Educational engines first
+        console.log('[EnhancedAI] Beginner difficulty - prioritizing educational engines');
+        if (this.isEngineHealthy('maia2') && this.engineConfigs.get('maia2')?.enabled) {
+          preferredEngines.push('maia2'); // Human-aligned educational moves
+        }
+        if (this.isEngineHealthy('openai') && this.engineConfigs.get('openai')?.enabled) {
+          preferredEngines.push('openai'); // Strategic learning
+        }
+        if (this.isEngineHealthy('stockfish')) {
+          preferredEngines.push('stockfish'); // Depth 5, Skill 1 - Beginner level
+        }
+        break;
     }
 
-    // OpenAI for advanced educational features
-    if (this.isEngineHealthy('openai') && this.engineConfigs.get('openai')?.enabled) {
-      preferredEngines.push('openai');
-    }
-
-    // Stockfish for reliable performance
-    if (this.isEngineHealthy('stockfish')) {
-      preferredEngines.push('stockfish');
-    }
-
-    // Traditional as ultimate fallback
+    // Traditional as ultimate fallback for all difficulties
     preferredEngines.push('traditional');
 
+    console.log(`[EnhancedAI] Engine priority for ${request.difficulty}: ${preferredEngines.join(' -> ')}`);
     return Array.from(new Set(preferredEngines)); // Remove duplicates
   }
 
