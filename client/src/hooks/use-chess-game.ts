@@ -59,6 +59,25 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     GameStorageManager.saveGame(gameState);
   }, [gameEngine]);
 
+  // Load saved game state on initialization
+  useEffect(() => {
+    if (!initialFen) {
+      const savedGame = GameStorageManager.loadGame();
+      if (savedGame) {
+        console.log('[GameState] Loading saved game with', savedGame.moveHistory.length, 'moves');
+        gameEngine.loadGame(savedGame.fen);
+        // Restore last move highlighting if moves exist
+        if (savedGame.moveHistory.length > 0) {
+          const lastHistoryMove = gameEngine.history[gameEngine.history.length - 1];
+          if (lastHistoryMove) {
+            setLastMove({ from: lastHistoryMove.from, to: lastHistoryMove.to });
+          }
+        }
+        triggerUpdate();
+      }
+    }
+  }, []); // Run only once on mount
+
   // Update settings when options change
   useEffect(() => {
     setCurrentGameMode(gameMode);

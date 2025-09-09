@@ -146,9 +146,9 @@ export class MoveClassifier {
     try {
       const chess = new Chess(fen);
       
-      // Get primary evaluation
-      const result = await this.stockfishAI.getMove(chess);
-      if (!result || !result.move) {
+      // Get primary evaluation using correct Stockfish API
+      const result = await this.stockfishAI.analyze(fen);
+      if (!result || !result.bestMoveSan) {
         return null;
       }
 
@@ -163,7 +163,7 @@ export class MoveClassifier {
         
         try {
           tempChess.move(move);
-          const moveEval = await this.stockfishAI.getMove(tempChess);
+          const moveEval = await this.stockfishAI.analyze(tempChess.fen());
           
           if (moveEval && moveEval.evaluation !== undefined) {
             const centipawnDiff = Math.abs(result.evaluation - moveEval.evaluation);
@@ -184,7 +184,7 @@ export class MoveClassifier {
 
       return {
         fen,
-        bestMove: result.move,
+        bestMove: result.bestMoveSan,
         evaluation: result.evaluation,
         depth: 15, // Stockfish depth
         alternatives
