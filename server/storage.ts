@@ -20,7 +20,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  upsertUser(user: InsertUser): Promise<User>;
 
   // Games
   getGamesByUserId(userId: number): Promise<Game[]>;
@@ -437,7 +437,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users);
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async upsertUser(userData: InsertUser): Promise<User> {
     // Since we removed Replit auth, upsert by email instead
     const [user] = await db
       .insert(users)
