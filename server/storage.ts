@@ -3,14 +3,14 @@ import {
   dailyTips, userTipProgress, organizations, userRoles, teams, teamMembers,
   tournaments, tournamentSections, registrations, rounds, pairings, tournamentGames,
   appeals, ratingSnapshots, certificates, notifications,
-  type User, type UpsertUser, type InsertUser, type Game, type InsertGame,
+  type User, type InsertUser, type Game, type InsertGame,
   type Lesson, type InsertLesson, type UserLessonProgress, 
   type InsertUserLessonProgress, type Settings, type InsertSettings,
   type Puzzle, type InsertPuzzle, type PuzzleAttempt, type InsertPuzzleAttempt,
   type Organization, type InsertOrganization, type Tournament, type InsertTournament
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // Users
