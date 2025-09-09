@@ -292,7 +292,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
         makeComputerMove();
       }, 500);
     }
-  }, [currentGameMode, currentPlayerColor, gameEngine.history.length, makeComputerMove]);
+  }, [currentGameMode, currentPlayerColor, makeComputerMove]);
 
   // Note: Move evaluation is now handled by Stockfish analysis instead of API calls
 
