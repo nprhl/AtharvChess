@@ -32,6 +32,7 @@ import { aiRecommendationEngine } from './ai-recommendation-engine';
 import { achievementEngine } from './achievement-engine';
 import { progressAnalytics } from './progress-analytics';
 import { userSkillAnalytics } from '@shared/schema';
+import { learningDetector, type AnalysisContext, type LearningOpportunity } from './learning-opportunity-detector';
 
 // Hash password helper function
 async function hashPassword(password: string): Promise<string> {
@@ -1049,6 +1050,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.warn('[Real-time Analysis] Failed to get AI explanation:', explainError);
             // Continue without explanation - don't fail the entire request
           }
+        }
+
+        // Educational Integration: Detect learning opportunities
+        try {
+          const chess = new Chess(fen);
+          const gamePhase = chess.history().length < 20 ? 'opening' : 
+                          chess.history().length < 60 ? 'middlegame' : 'endgame';
+          
+          const analysisContext: AnalysisContext = {
+            fen,
+            lastMove: bestMoveSan,
+            evaluation,
+            depth: adaptiveDepth,
+            engine: enhancedResult.engine,
+            gamePhase,
+            moveNumber: Math.ceil(chess.history().length / 2),
+            userElo: user?.eloRating || 1200,
+            difficulty: difficulty as Difficulty
+          };
+
+          // Detect learning opportunities for educational purposes
+          const opportunities = await learningDetector.detectOpportunities(analysisContext);
+          
+          if (opportunities.length > 0) {
+            analysisResult.learningOpportunities = opportunities;
+            console.log(`[Real-time Analysis] Detected ${opportunities.length} learning opportunities`);
+          }
+        } catch (learningError) {
+          console.warn('[Real-time Analysis] Failed to detect learning opportunities:', learningError);
+          // Continue without learning opportunities - don't fail the entire request
         }
 
         res.json(analysisResult);
