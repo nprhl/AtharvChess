@@ -33,6 +33,7 @@ import { achievementEngine } from './achievement-engine';
 import { progressAnalytics } from './progress-analytics';
 import { userSkillAnalytics } from '@shared/schema';
 import { learningDetector, type AnalysisContext, type LearningOpportunity } from './learning-opportunity-detector';
+import { Chess } from 'chess.js';
 
 // Hash password helper function
 async function hashPassword(password: string): Promise<string> {
