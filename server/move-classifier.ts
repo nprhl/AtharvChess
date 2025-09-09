@@ -147,7 +147,7 @@ export class MoveClassifier {
       const chess = new Chess(fen);
       
       // Get primary evaluation using correct Stockfish API
-      const result = await this.stockfishAI.analyze(fen);
+      const result = await this.stockfishAI.getAnalysis(fen);
       if (!result || !result.bestMoveSan) {
         return null;
       }
@@ -163,7 +163,7 @@ export class MoveClassifier {
         
         try {
           tempChess.move(move);
-          const moveEval = await this.stockfishAI.analyze(tempChess.fen());
+          const moveEval = await this.stockfishAI.getAnalysis(tempChess.fen());
           
           if (moveEval && moveEval.evaluation !== undefined) {
             const centipawnDiff = Math.abs(result.evaluation - moveEval.evaluation);
