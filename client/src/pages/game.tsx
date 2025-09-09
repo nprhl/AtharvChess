@@ -68,16 +68,19 @@ export default function GamePage() {
   
   // Track move data for classification
   useEffect(() => {
-    if (lastMove) {
+    if (lastMove && moveHistory.length > 0) {
       setCurrentMove(lastMove.san);
       setFenAfter(game.fen());
       
-      // Get previous position by undoing last move
-      const tempGame = game.clone();
-      tempGame.undo();
-      setFenBefore(tempGame.fen());
+      // Get previous position by temporarily undoing the last move
+      const previousMove = game.undoMove();
+      if (previousMove) {
+        setFenBefore(game.fen());
+        // Redo the move to restore current position
+        game.makeMove(lastMove.from, lastMove.to, lastMove.promotion);
+      }
     }
-  }, [lastMove, game]);
+  }, [lastMove, moveHistory.length]);
 
   // Trigger analysis when game state changes
   useEffect(() => {
