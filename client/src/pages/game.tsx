@@ -47,7 +47,8 @@ export default function GamePage() {
     lastMove,
     promotionPending,
     handlePromotion,
-    cancelPromotion
+    cancelPromotion,
+    fen
   } = useChessGame({ 
     gameMode: settings.gameMode,
     difficulty: settings.aiDifficulty,
@@ -69,23 +70,34 @@ export default function GamePage() {
   // Track move data for classification
   useEffect(() => {
     if (lastMove && moveHistory.length > 0) {
-      setCurrentMove(lastMove.san);
-      setFenAfter(game.fen());
+      // Get the san notation from the last move in history
+      const lastMoveFromHistory = moveHistory[moveHistory.length - 1];
+      setCurrentMove(lastMoveFromHistory.san);
+      setFenAfter(fen());
       
-      // Get previous position by temporarily undoing the last move
-      const previousMove = game.undoMove();
-      if (previousMove) {
-        setFenBefore(game.fen());
-        // Redo the move to restore current position
-        game.makeMove(lastMove.from, lastMove.to, lastMove.promotion);
+      // Get previous position by storing current FEN, undoing, getting previous FEN, then redoing
+      if (moveHistory.length > 1) {
+        // Store current position
+        const currentFen = fen();
+        
+        // Undo to get previous position
+        const undoneMove = undoMove();
+        if (undoneMove) {
+          setFenBefore(fen());
+          // Redo the move to restore current position
+          makeMove(lastMove.from, lastMove.to, undoneMove.promotion);
+        }
+      } else {
+        // If this is the first move, use starting position
+        setFenBefore('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
       }
     }
-  }, [lastMove, moveHistory.length]);
+  }, [lastMove, moveHistory, fen, undoMove, makeMove]);
 
   // Trigger analysis when game state changes
   useEffect(() => {
     analyze(game);
-  }, [game.fen(), analyze]);
+  }, [fen(), analyze]);
 
   // Handle move announcements with TTS
   useEffect(() => {
@@ -102,23 +114,11 @@ export default function GamePage() {
   // Provide educational feedback based on engine analysis
   useEffect(() => {
     if (engineAnalysis && settings.educationalFeedbackEnabled && moveHistory.length > 0) {
-      // Try to get evaluation from different possible structures
-      const evaluation = engineAnalysis.stockfish?.evaluation || 
-                        (engineAnalysis as any).evaluation || 
-                        engineAnalysis.stockfish?.bestEvaluation;
-      
-      // Only provide feedback for significant evaluation changes
-      if (evaluation && typeof evaluation === 'number') {
-        const currentEval = evaluation;
-        
-        // Detect blunders (evaluation swing of more than 200 centipawns)
-        if (Math.abs(currentEval) > 200) {
-          if (currentEval > 200) {
-            speakEducationalFeedback("Great move! You gained a significant advantage.");
-          } else if (currentEval < -200) {
-            speakEducationalFeedback("That move gave your opponent an advantage. Consider the suggested move.");
-          }
-        }
+      // Simplified feedback based on engine analysis availability
+      // TTS feedback will be enhanced when move classification system is integrated
+      if (engineAnalysis.stockfish && moveHistory.length > 1) {
+        // Provide basic feedback when analysis is available
+        speakEducationalFeedback("Move analyzed. Check the real-time analysis panel for detailed feedback.");
       }
     }
   }, [engineAnalysis, settings.educationalFeedbackEnabled, moveHistory.length]);
@@ -295,9 +295,9 @@ export default function GamePage() {
             gameMode={gameMode}
             playerColor={playerColor}
             currentTurn={turn}
-            currentMove={currentMove}
-            fenBefore={fenBefore}
-            fenAfter={fenAfter}
+            currentMove={currentMove || undefined}
+            fenBefore={fenBefore || undefined}
+            fenAfter={fenAfter || undefined}
             moveNumber={moveHistory.length}
             className="sticky top-4"
           />
@@ -312,9 +312,9 @@ export default function GamePage() {
             gameMode={gameMode}
             playerColor={playerColor}
             currentTurn={turn}
-            currentMove={currentMove}
-            fenBefore={fenBefore}
-            fenAfter={fenAfter}
+            currentMove={currentMove || undefined}
+            fenBefore={fenBefore || undefined}
+            fenAfter={fenAfter || undefined}
             moveNumber={moveHistory.length}
           />
         </div>
