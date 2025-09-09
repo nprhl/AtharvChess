@@ -59,6 +59,11 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     GameStorageManager.saveGame(gameState);
   }, [gameEngine]);
 
+  // Placeholder useEffect to maintain hook order (previously game loading logic)
+  useEffect(() => {
+    // Hook order preservation - no functionality needed
+  }, []);
+
   // Update settings when options change
   useEffect(() => {
     setCurrentGameMode(gameMode);
