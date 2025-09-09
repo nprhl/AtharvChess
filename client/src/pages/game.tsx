@@ -57,12 +57,28 @@ export default function GamePage() {
   const [showHint, setShowHint] = useState(false);
   const [currentHint, setCurrentHint] = useState<any>(null);
   const [learningTips, setLearningTips] = useState<string[]>([]);
+  const [currentMove, setCurrentMove] = useState<string | null>(null);
+  const [fenBefore, setFenBefore] = useState<string | null>(null);
+  const [fenAfter, setFenAfter] = useState<string | null>(null);
   const [lastMoveForTTS, setLastMoveForTTS] = useState<string | null>(null);
   const [suggestedMove, setSuggestedMove] = useState<string | null>(null);
   
   // Engine analysis for blunder detection and real-time analysis
   const { result: engineAnalysis, analyze } = useEngineAnalysis(true);
   
+  // Track move data for classification
+  useEffect(() => {
+    if (lastMove) {
+      setCurrentMove(lastMove.san);
+      setFenAfter(game.fen());
+      
+      // Get previous position by undoing last move
+      const tempGame = game.clone();
+      tempGame.undo();
+      setFenBefore(tempGame.fen());
+    }
+  }, [lastMove, game]);
+
   // Trigger analysis when game state changes
   useEffect(() => {
     analyze(game);
@@ -276,6 +292,10 @@ export default function GamePage() {
             gameMode={gameMode}
             playerColor={playerColor}
             currentTurn={turn}
+            currentMove={currentMove}
+            fenBefore={fenBefore}
+            fenAfter={fenAfter}
+            moveNumber={moveHistory.length}
             className="sticky top-4"
           />
         </div>
@@ -289,6 +309,10 @@ export default function GamePage() {
             gameMode={gameMode}
             playerColor={playerColor}
             currentTurn={turn}
+            currentMove={currentMove}
+            fenBefore={fenBefore}
+            fenAfter={fenAfter}
+            moveNumber={moveHistory.length}
           />
         </div>
       )}
