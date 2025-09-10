@@ -46,9 +46,8 @@ export function useChessGame(options: UseChessGameOptions = {}) {
 
   // Force re-render when game state changes
   const triggerUpdate = useCallback(() => {
-    console.log('[DEBUG] triggerUpdate called, current FEN:', gameEngine.fen());
     forceUpdate(prev => prev + 1);
-  }, [gameEngine]);
+  }, []);
 
   // Auto-save game state
   const saveGameState = useCallback(() => {
@@ -57,7 +56,6 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       moveHistory: gameEngine.history.map(move => move.san),
       playerColor: 'w' // Default to white for now
     };
-    console.log('[DEBUG] saveGameState called, saving FEN:', gameState.fen);
     GameStorageManager.saveGame(gameState);
   }, [gameEngine]);
 
@@ -166,17 +164,16 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     }
   }, [gameHasStarted, gameHasEnded, gameEngine, user?.id, gameStartTime, currentGameMode, currentDifficulty, currentPlayerColor]);
 
-  // Load saved game on mount (only once to avoid race conditions)
+  // Load saved game on mount (run only once to avoid race conditions with computer moves)
   useEffect(() => {
     const savedGame = GameStorageManager.loadGame();
     if (savedGame && !initialFen) {
-      console.log('[DEBUG] Loading saved game:', savedGame.fen);
       gameEngine.loadGame(savedGame.fen);
       // Clear last move when loading a saved game to avoid stale highlights
       setLastMove(null);
       triggerUpdate();
     }
-  }, []); // CRITICAL: No dependencies to avoid race conditions with computer moves
+  }, []);
 
 
 
@@ -210,17 +207,13 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('[DEBUG] Computer move received:', data.move, 'FEN before:', gameEngine.fen());
         const success = gameEngine.makeMove(data.move.from, data.move.to, data.move.promotion);
         if (success) {
-          console.log('[DEBUG] Computer move applied successfully, FEN after:', gameEngine.fen());
           // Update last move for highlighting (computer move)
           setLastMove({ from: data.move.from, to: data.move.to });
           triggerUpdate();
           saveGameState();
           return true;
-        } else {
-          console.log('[DEBUG] Computer move FAILED to apply');
         }
       } else {
         // AI failed to generate move - save game as abandoned
