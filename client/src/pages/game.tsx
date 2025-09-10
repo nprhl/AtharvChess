@@ -215,7 +215,12 @@ export default function GamePage() {
         <div className="flex-1 flex items-center justify-center px-2">
           <ChessBoard 
             game={game}
-            onMove={makeMove}
+            onMove={(from, to) => {
+              console.log('[BOARD] onMove called with:', from, 'to', to);
+              const result = makeMove(from, to);
+              console.log('[BOARD] makeMove returned:', result);
+              return result;
+            }}
             getValidMoves={getValidMoves}
             lastMove={lastMove}
             disabled={isGameOver() || isComputerThinking || (gameMode === 'pvc' && turn !== playerColor)}
