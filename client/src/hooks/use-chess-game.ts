@@ -184,7 +184,9 @@ export function useChessGame(options: UseChessGameOptions = {}) {
 
   // Computer move function
   const makeComputerMove = useCallback(async (): Promise<boolean> => {
+    console.log('[COMPUTER] makeComputerMove called! Mode:', currentGameMode, 'Thinking:', isComputerThinking);
     if (currentGameMode !== 'pvc' || isComputerThinking) {
+      console.log('[COMPUTER] Early return - wrong mode or thinking');
       return false;
     }
 
@@ -349,10 +351,15 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       // Move evaluation is now handled by Stockfish analysis automatically
       
       // Trigger computer move after player move in PvC mode
+      console.log('[TRIGGER] Checking computer move trigger. Mode:', currentGameMode);
       if (currentGameMode === 'pvc') {
+        console.log('[TRIGGER] Setting timeout for computer move...');
         setTimeout(() => {
+          console.log('[TRIGGER] Timeout fired, calling makeComputerMove');
           makeComputerMove();
         }, 800); // Small delay for better UX
+      } else {
+        console.log('[TRIGGER] Not PvC mode, skipping computer move');
       }
     }
     return success;
