@@ -166,7 +166,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     }
   }, [gameHasStarted, gameHasEnded, gameEngine, user?.id, gameStartTime, currentGameMode, currentDifficulty, currentPlayerColor]);
 
-  // Load saved game on mount
+  // Load saved game on mount (only once to avoid race conditions)
   useEffect(() => {
     const savedGame = GameStorageManager.loadGame();
     if (savedGame && !initialFen) {
@@ -176,7 +176,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       setLastMove(null);
       triggerUpdate();
     }
-  }, [gameEngine, initialFen, triggerUpdate]);
+  }, []); // CRITICAL: No dependencies to avoid race conditions with computer moves
 
 
 
