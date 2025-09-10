@@ -105,10 +105,26 @@ export class ChessGameEngine {
     this.moveHistory = [];
   }
 
-  loadGame(fen: string): boolean {
+  loadGame(fen: string, moveHistory?: string[]): boolean {
     try {
       this.chess.load(fen);
-      this.moveHistory = [];
+      
+      // If move history is provided, reconstruct it by replaying moves
+      if (moveHistory && moveHistory.length > 0) {
+        // Start with a fresh game and replay all moves
+        const tempChess = new Chess();
+        this.moveHistory = [];
+        
+        for (const san of moveHistory) {
+          const move = tempChess.move(san);
+          if (move) {
+            this.moveHistory.push(move);
+          }
+        }
+      } else {
+        this.moveHistory = [];
+      }
+      
       return true;
     } catch (error) {
       console.error('Failed to load game:', error);

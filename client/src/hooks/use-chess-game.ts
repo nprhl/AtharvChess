@@ -168,7 +168,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
   useEffect(() => {
     const savedGame = GameStorageManager.loadGame();
     if (savedGame && !initialFen) {
-      gameEngine.loadGame(savedGame.fen);
+      gameEngine.loadGame(savedGame.fen, savedGame.moveHistory);
       // Clear last move when loading a saved game to avoid stale highlights
       setLastMove(null);
       triggerUpdate();
@@ -324,6 +324,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     if (success) {
       const fenAfter = gameEngine.fen();
       const lastMoveHistory = gameEngine.history[gameEngine.history.length - 1];
+      
       
       // Update last move for highlighting
       setLastMove({ from, to });
