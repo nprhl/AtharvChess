@@ -3,6 +3,7 @@ import ChessBoard from "@/components/chess-board";
 import AIHintCard from "@/components/ai-hint-card";
 import PromotionDialog from "@/components/promotion-dialog";
 import SpeechCaption from "@/components/speech-caption";
+import TutorialOverlay from "@/components/TutorialOverlay";
 import { useChessGame } from "@/hooks/use-chess-game";
 import { useEffect, useCallback } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
@@ -29,6 +30,10 @@ export default function GamePage() {
     aiDifficulty: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
     playerColor: 'w' as 'w' | 'b'
   });
+
+  // Tutorial state for first-time users
+  const [hasSeenTutorial, setHasSeenTutorial] = useLocalStorage('chess-tutorial-completed', false);
+  const [showTutorial, setShowTutorial] = useState(!hasSeenTutorial);
 
   const { 
     game, 
@@ -67,6 +72,16 @@ export default function GamePage() {
   // Engine analysis for blunder detection and real-time analysis
   const { result: engineAnalysis, analyze } = useEngineAnalysis(true);
   
+  // Tutorial handlers
+  const handleTutorialClose = useCallback(() => {
+    setShowTutorial(false);
+  }, []);
+
+  const handleTutorialComplete = useCallback(() => {
+    setHasSeenTutorial(true);
+    setShowTutorial(false);
+  }, [setHasSeenTutorial]);
+
   // Track move data for classification
   useEffect(() => {
     if (lastMove && moveHistory.length > 0) {
@@ -329,6 +344,14 @@ export default function GamePage() {
       
       {/* Speech Caption for TTS */}
       <SpeechCaption />
+
+      {/* Tutorial Overlay for First-Time Users */}
+      {showTutorial && (
+        <TutorialOverlay
+          onClose={handleTutorialClose}
+          onComplete={handleTutorialComplete}
+        />
+      )}
     </div>
   );
 }
