@@ -162,7 +162,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       setGameHasEnded(true);
       saveGameToDatabase();
     }
-  }, [gameHasStarted, gameHasEnded, gameEngine, user?.id, gameStartTime, currentGameMode, currentDifficulty, currentPlayerColor]);
+  }, [gameHasStarted, gameHasEnded, user?.id, gameStartTime, currentGameMode, currentDifficulty, currentPlayerColor]);
 
   // Load saved game on mount (run only once to avoid race conditions with computer moves)
   useEffect(() => {
