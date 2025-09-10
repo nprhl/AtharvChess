@@ -164,7 +164,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
     }
   }, [gameHasStarted, gameHasEnded, gameEngine, user?.id, gameStartTime, currentGameMode, currentDifficulty, currentPlayerColor]);
 
-  // Load saved game on mount
+  // Load saved game on mount (only once)
   useEffect(() => {
     const savedGame = GameStorageManager.loadGame();
     if (savedGame && !initialFen) {
@@ -173,7 +173,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       setLastMove(null);
       triggerUpdate();
     }
-  }, [gameEngine, initialFen, triggerUpdate]);
+  }, []); // Only run once on mount
 
 
 
