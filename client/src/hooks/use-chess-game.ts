@@ -166,17 +166,12 @@ export function useChessGame(options: UseChessGameOptions = {}) {
 
   // Load saved game on mount (run only once to avoid race conditions with computer moves)
   useEffect(() => {
-    console.log('[EFFECT] Load saved game effect running');
     const savedGame = GameStorageManager.loadGame();
     if (savedGame && !initialFen) {
-      console.log('[EFFECT] Loading saved game with', savedGame.moveHistory.length, 'moves');
       gameEngine.loadGame(savedGame.fen, savedGame.moveHistory);
-      console.log('[EFFECT] After loading: current moves =', gameEngine.history.length);
       // Clear last move when loading a saved game to avoid stale highlights
       setLastMove(null);
       triggerUpdate();
-    } else {
-      console.log('[EFFECT] No saved game to load');
     }
   }, []);
 
@@ -184,9 +179,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
 
   // Computer move function
   const makeComputerMove = useCallback(async (): Promise<boolean> => {
-    console.log('[COMPUTER] makeComputerMove called! Mode:', currentGameMode, 'Thinking:', isComputerThinking);
     if (currentGameMode !== 'pvc' || isComputerThinking) {
-      console.log('[COMPUTER] Early return - wrong mode or thinking');
       return false;
     }
 
@@ -214,19 +207,13 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('[COMPUTER] Received move:', data.move, 'Current moves before:', gameEngine.history.length);
         const success = gameEngine.makeMove(data.move.from, data.move.to, data.move.promotion);
         if (success) {
-          console.log('[COMPUTER] Move applied successfully! Moves after:', gameEngine.history.length, 'FEN:', gameEngine.fen());
           // Update last move for highlighting (computer move)
           setLastMove({ from: data.move.from, to: data.move.to });
-          console.log('[COMPUTER] About to trigger update and save...');
           triggerUpdate();
           saveGameState();
-          console.log('[COMPUTER] Update and save completed');
           return true;
-        } else {
-          console.log('[COMPUTER] Move failed to apply');
         }
       } else {
         // AI failed to generate move - save game as abandoned
@@ -351,15 +338,10 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       // Move evaluation is now handled by Stockfish analysis automatically
       
       // Trigger computer move after player move in PvC mode
-      console.log('[TRIGGER] Checking computer move trigger. Mode:', currentGameMode);
       if (currentGameMode === 'pvc') {
-        console.log('[TRIGGER] Setting timeout for computer move...');
         setTimeout(() => {
-          console.log('[TRIGGER] Timeout fired, calling makeComputerMove');
           makeComputerMove();
         }, 800); // Small delay for better UX
-      } else {
-        console.log('[TRIGGER] Not PvC mode, skipping computer move');
       }
     }
     return success;

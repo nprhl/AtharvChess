@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Chess } from "chess.js";
 import ChessBoard from "@/components/chess-board";
 import AIHintCard from "@/components/ai-hint-card";
 import PromotionDialog from "@/components/promotion-dialog";
@@ -90,29 +91,23 @@ export default function GamePage() {
       setCurrentMove(lastMoveFromHistory.san);
       setFenAfter(fen());
       
-      // Get previous position by storing current FEN, undoing, getting previous FEN, then redoing
+      // Get previous position using a temporary Chess instance (non-mutating)
       if (moveHistory.length > 1) {
-        // Store current position
-        const currentFen = fen();
-        
-        // Undo to get previous position
-        const undoneMove = undoMove();
-        if (undoneMove) {
-          setFenBefore(fen());
-          // Redo the move to restore current position
-          makeMove(lastMove.from, lastMove.to, undoneMove.promotion);
-        }
+        // Create a temporary Chess instance to get previous FEN without mutating main game
+        const tempGame = new Chess(fen());
+        tempGame.undo();
+        setFenBefore(tempGame.fen());
       } else {
         // If this is the first move, use starting position
         setFenBefore('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
       }
     }
-  }, [lastMove, moveHistory, fen, undoMove, makeMove]);
+  }, [lastMove, moveHistory, fen]);
 
   // Trigger analysis when game state changes
   useEffect(() => {
     analyze(game);
-  }, [fen(), analyze]);
+  }, [fen()]);
 
   // Handle move announcements with TTS
   useEffect(() => {
@@ -215,12 +210,7 @@ export default function GamePage() {
         <div className="flex-1 flex items-center justify-center px-2">
           <ChessBoard 
             game={game}
-            onMove={(from, to) => {
-              console.log('[BOARD] onMove called with:', from, 'to', to);
-              const result = makeMove(from, to);
-              console.log('[BOARD] makeMove returned:', result);
-              return result;
-            }}
+            onMove={makeMove}
             getValidMoves={getValidMoves}
             lastMove={lastMove}
             disabled={isGameOver() || isComputerThinking || (gameMode === 'pvc' && turn !== playerColor)}
