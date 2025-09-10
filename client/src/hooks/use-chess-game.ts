@@ -344,7 +344,7 @@ export function useChessGame(options: UseChessGameOptions = {}) {
       }
     }
     return success;
-  }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentPlayerColor, isComputerThinking, makeComputerMove]);
+  }, [gameEngine, triggerUpdate, saveGameState, currentGameMode, currentPlayerColor, isComputerThinking]);
 
   const handlePromotion = useCallback((piece: 'q' | 'r' | 'b' | 'n') => {
     if (promotionPending) {
