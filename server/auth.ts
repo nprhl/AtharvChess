@@ -12,9 +12,24 @@ import { databaseSessionStore, type SecureSessionData } from './session-store';
 export function configureSession() {
   const isProduction = process.env.NODE_ENV === 'production';
   
+  // Require SESSION_SECRET in production and development
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    console.error('❌ CRITICAL: SESSION_SECRET environment variable is required for security');
+    console.error('Set SESSION_SECRET to a cryptographically secure random string (minimum 32 characters)');
+    console.error('Example: SESSION_SECRET=your-secure-random-string-here');
+    process.exit(1);
+  }
+  
+  if (sessionSecret.length < 32) {
+    console.error('❌ CRITICAL: SESSION_SECRET must be at least 32 characters long for security');
+    console.error('Current length:', sessionSecret.length);
+    process.exit(1);
+  }
+  
   return session({
     store: databaseSessionStore,
-    secret: process.env.SESSION_SECRET || 'chess-learning-app-secret-key-change-in-production',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     rolling: true, // Reset expiry on activity
