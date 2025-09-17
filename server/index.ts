@@ -1,11 +1,42 @@
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeStorage } from "./storage";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Security Headers with Helmet.js
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for components
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for development
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections for HMR
+      fontSrc: ["'self'", "https:", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"]
+    },
+    reportOnly: process.env.NODE_ENV === 'development' // Report-only in development
+  },
+  crossOriginEmbedderPolicy: false, // Disabled for compatibility with some features
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
+// Parse cookies for CSRF protection
+app.use(cookieParser());
+
+// Parse JSON and URL-encoded bodies
+app.use(express.json({ limit: '10mb' })); // Prevent large payloads
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 // Sensitive fields that should never be logged
 const SENSITIVE_FIELDS = [

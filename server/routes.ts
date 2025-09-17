@@ -120,6 +120,40 @@ const passwordResetLimiter = rateLimit({
   }
 });
 
+// Modern CSRF Protection using Double-Submit Cookie Pattern
+function generateCsrfToken(): string {
+  return randomBytes(32).toString('hex');
+}
+
+function setCsrfCookie(res: any, token: string): void {
+  res.cookie('csrf-token', token, {
+    httpOnly: false, // Client needs to read this for double-submit
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 60 * 60 * 1000 // 1 hour
+  });
+}
+
+function csrfProtection(req: any, res: any, next: any): void {
+  // Skip CSRF for safe methods
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+
+  const cookieToken = req.cookies?.['csrf-token'];
+  const headerToken = req.headers['x-csrf-token'] || req.body._csrf;
+
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    console.warn(`CSRF token validation failed for ${req.ip} on ${req.path}`);
+    return res.status(403).json({ 
+      error: 'Invalid CSRF token. Please refresh the page and try again.',
+      code: 'CSRF_TOKEN_INVALID'
+    });
+  }
+
+  next();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup form-based authentication
   setupAuth(app);
@@ -127,9 +161,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apply general rate limiting to all API endpoints
   app.use('/api', generalApiLimiter);
   
+  // Apply CSRF protection to state-changing API routes
+  app.use('/api', csrfProtection);
+  
   // Mount API routes
   app.use('/api/evals', evalRoutes);
   registerGameMoveRoutes(app);
+
+  // CSRF token endpoint for frontend
+  app.get('/api/auth/csrf-token', (req, res) => {
+    const token = generateCsrfToken();
+    setCsrfCookie(res, token);
+    res.json({ csrfToken: token });
+  });
 
   // Auth user endpoint - form-based auth only
   app.get('/api/auth/user', async (req: any, res) => {
