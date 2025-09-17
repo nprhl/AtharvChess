@@ -93,10 +93,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { username, email, password } = registerSchema.parse(req.body);
       
-      // Check if user already exists
+      // Check if user already exists (email uniqueness)
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
-        return res.status(400).json({ message: "User already exists with this email" });
+        return res.status(409).json({ 
+          message: "An account with this email already exists",
+          error: "EMAIL_EXISTS" 
+        });
       }
 
       const existingUsername = await storage.getUserByUsername(username);
@@ -1323,14 +1326,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Analyze the position after the move
       if (fenAfter) {
         try {
-          const engineResult = await enhancedChessAI.getAnalysis(fenAfter, 12);
+          // Use enhanced AI to get best move (the main public method)
+          const engineResult = await enhancedChessAI.getBestMove({
+            fen: fenAfter,
+            difficulty: 'advanced',
+            enableFallback: true
+          });
           
-          if (engineResult && engineResult.bestMove) {
+          if (engineResult && engineResult.move) {
             analysisResult.analysis = {
-              bestMove: engineResult.bestMoveSan,
-              evaluation: engineResult.evaluation,
-              depth: engineResult.depth,
-              engine: engineResult.engine
+              bestMove: engineResult.move.san,
+              evaluation: engineResult.metadata?.evaluation,
+              engine: engineResult.engine,
+              confidence: engineResult.confidence,
+              responseTime: engineResult.responseTime
             };
           }
         } catch (analysisError) {
@@ -1423,10 +1432,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Store game in database
       const [game] = await db.insert(games).values({
-        userId,
+        userId, // This maps to user_id in the database schema
         opponent,
         result,
         moves,
+        finalFen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", // Required field
         eloChange
       }).returning();
 
