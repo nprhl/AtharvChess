@@ -7,13 +7,22 @@ import { initializeStorage } from "./storage";
 
 const app = express();
 
+// Configure trust proxy for rate limiting in production
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Security Headers with Helmet.js
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for components
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for development
+      styleSrc: process.env.NODE_ENV === 'production' 
+        ? ["'self'"] 
+        : ["'self'", "'unsafe-inline'"], // Only allow unsafe-inline in development
+      scriptSrc: process.env.NODE_ENV === 'production' 
+        ? ["'self'"] 
+        : ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Only allow unsafe scripts in development
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections for HMR
       fontSrc: ["'self'", "https:", "data:"],
