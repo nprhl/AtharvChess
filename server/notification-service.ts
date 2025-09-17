@@ -50,8 +50,8 @@ export class NotificationService {
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
     
     console.log(`[NotificationService] Password reset requested for ${email}`);
-    console.log(`[NotificationService] Reset token: ${resetToken}`);
-    console.log(`[NotificationService] Reset link: ${resetUrl}`);
+    // SECURITY: Never log reset tokens in production - removed token logging
+    console.log(`[NotificationService] Reset link generated for user`);
     
     // In production, you would integrate with SendGrid or another email service here
     return true;

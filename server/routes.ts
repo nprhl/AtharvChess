@@ -8,7 +8,7 @@ import { tipService } from "./tip-service";
 import { gameIntegration } from "./game-integration";
 import { insertUserSchema, insertGameSchema, insertSettingsSchema, loginSchema, registerSchema, insertOrganizationSchema, insertTournamentSchema, type InsertUser } from "@shared/schema";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash, timingSafeEqual } from "crypto";
 import { z } from "zod";
 import { StockfishAI } from "./stockfish-ai";
 import { OpenAIChessAI } from "./openai-chess-ai";
@@ -40,6 +40,25 @@ import { openingBook } from './opening-book';
 // Hash password helper function
 async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
+}
+
+// Secure reset token functions
+function hashResetToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function verifyResetToken(providedToken: string, hashedToken: string): boolean {
+  const hashedProvidedToken = hashResetToken(providedToken);
+  
+  // Constant-time comparison to prevent timing attacks
+  if (hashedProvidedToken.length !== hashedToken.length) {
+    return false;
+  }
+  
+  const providedBuffer = Buffer.from(hashedProvidedToken, 'hex');
+  const storedBuffer = Buffer.from(hashedToken, 'hex');
+  
+  return timingSafeEqual(providedBuffer, storedBuffer);
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -218,9 +237,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resetToken = randomBytes(32).toString('hex');
       const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
 
-      // Store reset token in database (you'd need to add this to the user schema)
+      // Hash the token before storing in database for security
+      const hashedResetToken = hashResetToken(resetToken);
+      
+      // Store hashed reset token in database
       await storage.updateUser(user.id, { 
-        resetToken, 
+        resetToken: hashedResetToken, 
         resetTokenExpiry: resetExpiry 
       });
 
@@ -254,13 +276,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "New password must be at least 6 characters long" });
       }
 
-      // Find user with valid reset token  
+      // Find user with valid reset token using constant-time comparison
       const allUsers = await storage.getAllUsers();
-      const user = allUsers.find((u) => 
-        u.resetToken === token && 
-        u.resetTokenExpiry && 
-        new Date(u.resetTokenExpiry) > new Date()
-      );
+      let user = null;
+      
+      // Check each user with constant-time comparison to prevent timing attacks
+      for (const u of allUsers) {
+        if (u.resetToken && 
+            u.resetTokenExpiry && 
+            new Date(u.resetTokenExpiry) > new Date() &&
+            verifyResetToken(token, u.resetToken)) {
+          user = u;
+          break;
+        }
+      }
 
       if (!user) {
         return res.status(400).json({ message: "Invalid or expired reset token" });
