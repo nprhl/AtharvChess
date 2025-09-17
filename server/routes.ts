@@ -154,6 +154,76 @@ function csrfProtection(req: any, res: any, next: any): void {
   next();
 }
 
+// Comprehensive Input Validation Middleware
+function createValidationMiddleware(schema: z.ZodSchema) {
+  return (req: any, res: any, next: any) => {
+    try {
+      const validatedData = schema.parse(req.body);
+      req.validatedBody = validatedData;
+      next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const validationErrors = error.errors.map(err => ({
+          field: err.path.join('.'),
+          message: err.message,
+          code: err.code
+        }));
+        
+        console.warn(`Input validation failed for ${req.ip} on ${req.path}:`, validationErrors);
+        
+        return res.status(400).json({
+          error: 'Invalid input data',
+          details: validationErrors,
+          code: 'VALIDATION_ERROR'
+        });
+      }
+      
+      console.error('Unexpected validation error:', error);
+      return res.status(500).json({
+        error: 'Internal validation error',
+        code: 'VALIDATION_SYSTEM_ERROR'
+      });
+    }
+  };
+}
+
+// Common validation schemas
+const emailSchema = z.string().email().min(1).max(320); // RFC 5321 limit
+const usernameSchema = z.string().min(2).max(50).regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens');
+const passwordSchema = z.string().min(8).max(128).regex(
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/,
+  'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character'
+);
+
+// Enhanced schemas with better validation
+const enhancedRegisterSchema = z.object({
+  username: usernameSchema,
+  email: emailSchema,
+  password: passwordSchema
+});
+
+const enhancedLoginSchema = z.object({
+  username: z.string().min(1).max(50),
+  password: z.string().min(1).max(128)
+});
+
+const forgotPasswordSchema = z.object({
+  email: emailSchema
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().length(64, 'Invalid token format'), // Our tokens are 64 hex chars
+  newPassword: passwordSchema
+});
+
+const gameStateSchema = z.object({
+  fen: z.string().min(1).max(100),
+  pgn: z.string().max(10000),
+  difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
+  playerColor: z.enum(['white', 'black']),
+  gameMode: z.enum(['human-vs-computer', 'human-vs-human'])
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup form-based authentication
   setupAuth(app);
@@ -195,9 +265,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy authentication routes - kept for existing functionality
-  app.post("/api/auth/register", authLimiter, async (req, res) => {
+  app.post("/api/auth/register", authLimiter, createValidationMiddleware(enhancedRegisterSchema), async (req, res) => {
     try {
-      const { username, email, password } = registerSchema.parse(req.body);
+      const { username, email, password } = req.validatedBody;
       
       // Check if user already exists (email uniqueness)
       const existingUser = await storage.getUserByEmail(email);
@@ -253,14 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/login", authLimiter, (req, res, next) => {
-    try {
-      loginSchema.parse(req.body);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid login data", errors: error.errors });
-      }
-    }
+  app.post("/api/auth/login", authLimiter, createValidationMiddleware(enhancedLoginSchema), (req, res, next) => {
 
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) {
@@ -328,9 +391,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Forgot password route
-  app.post("/api/auth/forgot-password", passwordResetLimiter, async (req, res) => {
+  app.post("/api/auth/forgot-password", passwordResetLimiter, createValidationMiddleware(forgotPasswordSchema), async (req, res) => {
     try {
-      const { email } = req.body;
+      const { email } = req.validatedBody;
       
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
@@ -373,9 +436,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reset password route
-  app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
+  app.post("/api/auth/reset-password", authLimiter, createValidationMiddleware(resetPasswordSchema), async (req, res) => {
     try {
-      const { token, newPassword } = req.body;
+      const { token, newPassword } = req.validatedBody;
       
       if (!token || !newPassword) {
         return res.status(400).json({ message: "Token and new password are required" });
