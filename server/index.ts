@@ -7,6 +7,36 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Sensitive fields that should never be logged
+const SENSITIVE_FIELDS = [
+  'password', 'passwordHash', 'resetToken', 'token', 'secret', 'key',
+  'apiKey', 'privateKey', 'sessionId', 'refreshToken', 'accessToken',
+  'authorization', 'cookie', 'cookies', 'ssn', 'creditCard', 'cvv'
+];
+
+// Sanitize response data to remove sensitive fields
+function sanitizeLogData(data: any): any {
+  if (!data || typeof data !== 'object') return data;
+
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeLogData(item));
+  }
+
+  const sanitized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    const lowerKey = key.toLowerCase();
+    
+    if (SENSITIVE_FIELDS.some(field => lowerKey.includes(field))) {
+      sanitized[key] = '[REDACTED]';
+    } else if (typeof value === 'object') {
+      sanitized[key] = sanitizeLogData(value);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -22,12 +52,15 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      
+      // Only log sanitized response data, never sensitive fields
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        const sanitizedResponse = sanitizeLogData(capturedJsonResponse);
+        logLine += ` :: ${JSON.stringify(sanitizedResponse)}`;
       }
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+      if (logLine.length > 120) {
+        logLine = logLine.slice(0, 119) + "…";
       }
 
       log(logLine);
