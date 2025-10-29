@@ -1,11 +1,13 @@
 import { Switch, Route, Link } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PermissionProvider } from "@/contexts/PermissionContext";
 import { useAuth } from "@/hooks/useAuth";
+import { initializeCapacitor } from "./capacitor-init";
 import GamePage from "@/pages/game";
 import LessonsPage from "@/pages/lessons";
 import LessonDetailPage from "@/pages/lesson-detail";
@@ -115,6 +117,11 @@ function Router() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Initialize Capacitor for mobile platforms
+    initializeCapacitor();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">

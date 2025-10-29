@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { Chess, Square } from "chess.js";
+import { triggerHapticFeedback } from "../capacitor-init";
 
 interface ChessPiece {
   type: string;
@@ -45,6 +46,9 @@ export default function ChessBoard({ game, onMove, getValidMoves, lastMove, disa
   const handleDragStart = useCallback((piece: ChessPiece, square: Square) => {
     if (disabled || piece.color !== game.turn()) return false;
     
+    // Haptic feedback on piece selection
+    triggerHapticFeedback('light');
+    
     setDraggedPiece({ piece, square });
     const moves = getValidMoves(square);
     setValidMoves(moves);
@@ -69,6 +73,10 @@ export default function ChessBoard({ game, onMove, getValidMoves, lastMove, disa
     if (!draggedPiece) return false;
     
     const success = onMove(draggedPiece.square, targetSquare);
+    if (success) {
+      // Haptic feedback on successful move
+      triggerHapticFeedback('medium');
+    }
     handleDragEnd();
     return success;
   }, [draggedPiece, onMove, handleDragEnd]);
