@@ -37,12 +37,13 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 44249
-externalPort = 3001
+localPort = 5432
+externalPort = 3000
+exposeLocalhost = true
 
 [[ports]]
-localPort = 46281
-externalPort = 3000
+localPort = 5433
+externalPort = 3001
 
 [agent]
-integrations = ["javascript_sendgrid==1.0.0"]
+integrations = ["javascript_sendgrid:1.0.0"]

@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from 'wouter';
+import { Eye, EyeOff, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -11,8 +12,38 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { registerSchema, type RegisterRequest } from '@shared/schema';
 
+function PasswordRequirements({ password }: { password: string }) {
+  const requirements = [
+    { label: 'At least 8 characters', met: password.length >= 8 },
+    { label: 'One uppercase letter (A-Z)', met: /[A-Z]/.test(password) },
+    { label: 'One lowercase letter (a-z)', met: /[a-z]/.test(password) },
+    { label: 'One number (0-9)', met: /\d/.test(password) },
+    { label: 'One special character (@$!%*?&)', met: /[@$!%*?&]/.test(password) },
+  ];
+
+  if (!password) return null;
+
+  return (
+    <div className="mt-2 space-y-1">
+      {requirements.map((req, i) => (
+        <div key={i} className="flex items-center gap-1.5 text-xs">
+          {req.met ? (
+            <Check className="h-3 w-3 text-green-500 shrink-0" />
+          ) : (
+            <X className="h-3 w-3 text-red-400 shrink-0" />
+          )}
+          <span className={req.met ? 'text-green-600' : 'text-muted-foreground'}>
+            {req.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function RegisterPage() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -25,6 +56,8 @@ export default function RegisterPage() {
     },
   });
 
+  const passwordValue = form.watch('password');
+
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterRequest) => {
       const response = await fetch('/api/auth/register', {
@@ -35,6 +68,10 @@ export default function RegisterPage() {
       
       if (!response.ok) {
         const error = await response.json();
+        if (error.details && Array.isArray(error.details)) {
+          const messages = error.details.map((d: any) => d.message).join('. ');
+          throw new Error(messages);
+        }
         throw new Error(error.message || 'Registration failed');
       }
       
@@ -62,7 +99,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Join Chess Learning</CardTitle>
@@ -81,11 +118,13 @@ export default function RegisterPage() {
                     <FormLabel>Username</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Choose a username"
+                        placeholder="e.g. chess_player1"
+                        autoComplete="username"
                         {...field}
                         disabled={registerMutation.isPending}
                       />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">Letters, numbers, underscores, and hyphens only</p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -99,7 +138,8 @@ export default function RegisterPage() {
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="Enter your email"
+                        placeholder="you@example.com"
+                        autoComplete="email"
                         {...field}
                         disabled={registerMutation.isPending}
                       />
@@ -115,13 +155,26 @@ export default function RegisterPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="Create a password (min. 6 characters)"
-                        {...field}
-                        disabled={registerMutation.isPending}
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder="e.g. Chess@2026"
+                          autoComplete="new-password"
+                          {...field}
+                          disabled={registerMutation.isPending}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          tabIndex={-1}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </FormControl>
+                    <PasswordRequirements password={passwordValue || ''} />
                     <FormMessage />
                   </FormItem>
                 )}
